@@ -1,13 +1,11 @@
+import BulbOutlined from "@ant-design/icons/BulbOutlined"
+import ExclamationCircleFilled from "@ant-design/icons/ExclamationCircleFilled"
+import InfoCircleOutlined from "@ant-design/icons/InfoCircleOutlined"
+import WarningOutlined from "@ant-design/icons/WarningOutlined"
 import React from "react"
 
 import cn from "../clsx"
 import { Button, ButtonProps } from "./Button"
-import {
-  BulbOutlined,
-  ExclamationCircleFilled,
-  InfoCircleOutlined,
-  WarningOutlined,
-} from "@loft-enterprise/icons"
 
 type Props = {
   title?: string
