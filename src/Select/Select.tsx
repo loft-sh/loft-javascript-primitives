@@ -50,19 +50,13 @@ function SelectContainer<
   innerProps,
   isDisabled,
   error,
-  variant,
-}: TSelectContainerProps<OptionType, IsMulti, Group> & {
-  variant?: SelectVariant
-}): React.ReactElement {
+}: TSelectContainerProps<OptionType, IsMulti, Group>): React.ReactElement {
   const memoizedErrorContent = useMemo(() => error?.content, [error?.content])
-  const isPlain = variant === SelectVariant.PLAIN
 
   return (
     <div
       {...innerProps}
-      className={cn("relative rounded pr-2", {
-        "border border-divider-main bg-white": !isPlain,
-        "bg-transparent text-secondary": isPlain,
+      className={cn("relative rounded border border-divider-main bg-white pr-2", {
         "cursor-not-allowed": isDisabled,
         "cursor-pointer": !isDisabled,
         "border-danger-main": memoizedErrorContent,
@@ -70,12 +64,7 @@ function SelectContainer<
       {children}
       {memoizedErrorContent && (
         <Tooltip richTooltip className="z-[9999999] max-w-lg" content={memoizedErrorContent}>
-          <CloseCircleFilled
-            className={cn("absolute right-2 top-1/2 size-4 -translate-y-1/2 text-danger-main", {
-              "bg-white": !isPlain,
-              "bg-transparent": isPlain,
-            })}
-          />
+          <CloseCircleFilled className="absolute right-2 top-1/2 size-4 -translate-y-1/2 bg-white text-danger-main" />
         </Tooltip>
       )}
     </div>
@@ -135,25 +124,18 @@ const SelectSingleValue = <OptionType extends TSelectOptionType, IsMulti extends
   children,
   hasPrefix,
   data,
-  variant,
-}: TSelectSingleValueProps<OptionType, IsMulti> & {
-  variant?: SelectVariant
-}): React.ReactElement => {
-  const isPlain = variant === SelectVariant.PLAIN
-
+}: TSelectSingleValueProps<OptionType, IsMulti>): React.ReactElement => {
   return (
     <div
       className={cx(
-        "pointer-events-none flex select-none items-center text-sm data-[selected=true]:bg-primary-main",
+        "pointer-events-none absolute top-1/2 flex w-[85%] -translate-y-1/2 select-none items-center justify-between text-sm data-[selected=true]:bg-primary-main",
         {
-          "absolute top-1/2 w-[85%] -translate-y-1/2 justify-between": !isPlain,
-          "left-[30px]": !isPlain && hasPrefix,
-          "left-3": !isPlain && !hasPrefix,
+          "left-[30px]": hasPrefix,
+          "left-3": !hasPrefix,
         }
       )}>
       <div
-        className={cx("whitespace-nowrap", {
-          "truncate text-ellipsis": !isPlain,
+        className={cx("truncate text-ellipsis whitespace-nowrap", {
           "w-full": !hasPrefix,
           "w-[70%]": hasPrefix || data.extraArgs?.suffix || data.extraArgs?.tag,
         })}>
@@ -284,12 +266,9 @@ const SelectOption = <OptionType extends TSelectOptionType, IsMulti extends bool
 }
 
 const SelectControl = <OptionType extends TSelectOptionType, IsMulti extends boolean>(
-  props: TSelectControlProps<OptionType, IsMulti> & {
-    isDisabled?: boolean | undefined
-    inputPrefix?: React.ReactNode
-  }
+  props: TSelectControlProps<OptionType, IsMulti> & { isDisabled?: boolean | undefined }
 ) => {
-  const { children, inputPrefix, selectProps, isDisabled } = props
+  const { children, selectProps, isDisabled } = props
   const onClick = () => {
     selectProps.menuIsOpen ? selectProps.onMenuClose() : selectProps.onMenuOpen()
   }
@@ -297,12 +276,10 @@ const SelectControl = <OptionType extends TSelectOptionType, IsMulti extends boo
   return (
     <div
       className={cx("flex justify-between", {
-        "flex-row items-center gap-2": !!inputPrefix,
         "pointer-events-none cursor-not-allowed": isDisabled,
       })}
       onClick={onClick}
       ref={props.innerRef}>
-      {inputPrefix ? inputPrefix : undefined}
       {children}
     </div>
   )
@@ -315,30 +292,24 @@ const SelectControl = <OptionType extends TSelectOptionType, IsMulti extends boo
 const SelectPlaceholder = <OptionType extends TSelectOptionType, IsMulti extends boolean>({
   inputPrefix,
   selectProps,
-  variant,
 }: PlaceholderProps<OptionType, IsMulti, GroupBase<OptionType>> & {
   inputPrefix: React.ReactNode
-  variant?: SelectVariant
 }): React.ReactElement => {
   const hasPrefix = !!inputPrefix
   const { placeholder } = selectProps
-  const isPlain = variant === SelectVariant.PLAIN
 
   return (
     <div
-      className={cx("pointer-events-none select-none whitespace-nowrap text-sm text-tertiary", {
-        "absolute top-1/2 max-w-[80%] -translate-y-1/2 truncate text-ellipsis": !isPlain,
-        "left-3": !isPlain && !hasPrefix,
-        "left-[40px]": !isPlain && hasPrefix,
-      })}>
+      className={cx(
+        "pointer-events-none absolute top-1/2 max-w-[80%] -translate-y-1/2 select-none truncate text-ellipsis whitespace-nowrap text-sm text-tertiary",
+        {
+          "left-3": !hasPrefix,
+          "left-[40px]": hasPrefix,
+        }
+      )}>
       {placeholder ? placeholder : "Select an option"}
     </div>
   )
-}
-
-enum SelectVariant {
-  STANDARD = "STANDARD",
-  PLAIN = "PLAIN",
 }
 
 /**
@@ -363,9 +334,8 @@ const Select = React.memo(
     disabledOptionTooltipText,
     placeholder,
     isClearable,
-    variant = SelectVariant.STANDARD,
     ...props
-  }: TSelectProps<OptionType, IsMulti> & { variant?: SelectVariant }): React.ReactElement => {
+  }: TSelectProps<OptionType, IsMulti>): React.ReactElement => {
     const [internalValue, setInternalValue] = useState<
       TSelectOptionType | MultiValue<OptionType> | null
     >(null)
@@ -423,10 +393,9 @@ const Select = React.memo(
     )
     const SelectComponent = onCreateOption ? CreatableSelect : ReactSelect
     const InputComponent = React.useCallback(
-      (props: InputProps<TSelectOptionType, IsMulti, GroupBase<TSelectOptionType>>) =>
-        variant === SelectVariant.PLAIN ? undefined : (
-          <SelectInput {...props} inputPrefix={inputPrefix} />
-        ),
+      (props: InputProps<TSelectOptionType, IsMulti, GroupBase<TSelectOptionType>>) => (
+        <SelectInput {...props} inputPrefix={inputPrefix} />
+      ),
       [inputPrefix]
     )
 
@@ -438,20 +407,16 @@ const Select = React.memo(
 
     const memoizedContainer = useMemo(
       () => (props: TSelectContainerProps<OptionType, IsMulti>) => (
-        <SelectContainer {...props} variant={variant} error={error} />
+        <SelectContainer {...props} error={error} />
       ),
-      [error, variant]
+      [error]
     )
 
     const memoizedComponents = useMemo(
       () => ({
         SelectContainer: memoizedContainer,
         Control: React.memo((props: ControlProps<OptionType, IsMulti>) => (
-          <SelectControl
-            {...props}
-            inputPrefix={variant === SelectVariant.PLAIN ? inputPrefix : undefined}
-            isDisabled={isDisabled}
-          />
+          <SelectControl {...props} isDisabled={isDisabled} />
         )),
         Option: (props: OptionProps<OptionType, IsMulti, GroupBase<OptionType>>) => {
           return <SelectOption {...props} disabledOptionTooltipText={disabledOptionTooltipText} />
@@ -461,10 +426,10 @@ const Select = React.memo(
         >,
         MenuList: SelectMenuList,
         SingleValue: React.memo((props: SingleValueProps<OptionType, IsMulti>) => (
-          <SelectSingleValue {...props} variant={variant} hasPrefix={hasPrefix} />
+          <SelectSingleValue {...props} hasPrefix={hasPrefix} />
         )),
         Placeholder: React.memo((props: PlaceholderProps<OptionType, IsMulti>) => (
-          <SelectPlaceholder {...props} inputPrefix={inputPrefix} variant={variant} />
+          <SelectPlaceholder {...props} inputPrefix={inputPrefix} />
         )),
         MultiValue: SelectMultiValue as unknown as ComponentType<
           MultiValueProps<OptionType, IsMulti, GroupBase<OptionType>>
@@ -487,7 +452,6 @@ const Select = React.memo(
         disabledOptionTooltipText,
         hasPrefix,
         inputPrefix,
-        variant,
       ]
     ) as Partial<SelectComponents<OptionType, IsMulti, GroupBase<OptionType>>> | undefined
 
@@ -523,4 +487,4 @@ const Select = React.memo(
 
 Select.displayName = "Select"
 
-export { Select, SelectVariant }
+export { Select }
