@@ -22,6 +22,7 @@ import useMenuVisibility from "./useMenuVisibility"
 import { ResultError } from "@loft-enterprise/client"
 import {
   Button,
+  cn,
   TableRow as NormalTableRow,
   Table,
   TableBody,
@@ -50,6 +51,7 @@ type Props<TData, TValue> = {
   showResetFiltersButton?: boolean
   resetTableKey?: string
   columnKeyPath?: string[]
+  onRowClick?: (rowKey: Key, rowId: string) => void
   emptyState?: React.ReactNode
 }
 
@@ -85,6 +87,7 @@ function DataTable<TData, TValue>({
   resetTableKey,
   columnKeyPath,
   emptyState,
+  onRowClick,
 }: Props<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([
     {
@@ -284,26 +287,32 @@ function DataTable<TData, TValue>({
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.05 }}
+                      className={cn({
+                        "cursor-pointer": !!onRowClick,
+                      })}
+                      onClick={() => {
+                        onRowClick?.(key as Key, row.id)
+                      }}
                       data-row-key={key as Key}
                       data-state={row.getIsSelected() && "selected"}
                       onMouseOver={() => setHoveredRow(row.id)}
                       onMouseLeave={() => setHoveredRow(undefined)}>
                       {row.getVisibleCells().map((cell) => {
                         const isPinned = cell.column.getIsPinned()
-                        const isColumnHovered = row.id === hoveredRow
+                        const isRowHovered = row.id === hoveredRow
 
                         return (
                           <TableCell
                             key={cell.id}
                             data-opacity-transition={
-                              isPinned && !isColumnHovered && !shouldMenuAppearOnHover
+                              isPinned && !isRowHovered && !shouldMenuAppearOnHover
                             }
                             className={`overflow-x-hidden text-ellipsis whitespace-nowrap data-[opacity-transition=false]:duration-200 data-[opacity-transition=true]:duration-300 ${isPinned && row.id === hoveredRow ? "opacity-100" : ""}`}
                             style={{
                               maxWidth: cell.column.getSize(),
                               ...getCommonPinningStyles(cell.column, shouldMenuAppearOnHover),
                               opacity:
-                                isPinned && !isColumnHovered && !shouldMenuAppearOnHover ? 0 : 1,
+                                isPinned && !isRowHovered && !shouldMenuAppearOnHover ? 0 : 1,
                             }}>
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
                           </TableCell>

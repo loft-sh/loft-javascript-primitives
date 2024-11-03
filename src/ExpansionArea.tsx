@@ -39,7 +39,7 @@ function ExpansionArea({
       defaultValue={open ? value : undefined}>
       <AccordionItem
         value={value}
-        className={cn("flex w-full flex-col bg-gray-5 [&_h3]:!mb-0", {
+        className={cn("flex w-full flex-col rounded-md bg-gray-5 [&_h3]:!mb-0", {
           "border-none": isChild,
           "border border-divider-light": !isChild,
           "bg-transparent": variant === "descriptive",
@@ -57,7 +57,7 @@ function ExpansionArea({
             })}>
             <span
               className={cn("", {
-                "flex flex-col gap-2 text-sm font-semibold": variant === "descriptive",
+                "flex flex-col gap-2 text-sm font-medium text-primary": variant === "descriptive",
               })}>
               {title}
             </span>
