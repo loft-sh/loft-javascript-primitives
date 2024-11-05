@@ -1,4 +1,7 @@
 /* eslint-disable react/display-name */
+import CloseCircleFilled from "@ant-design/icons/CloseCircleOutlined"
+import CloseOutlined from "@ant-design/icons/CloseOutlined"
+import DownOutlined from "@ant-design/icons/DownOutlined"
 import React, { ComponentType, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import ReactSelect, {
   ClearIndicatorProps,
@@ -34,7 +37,6 @@ import {
   TSelectProps,
   TSelectSingleValueProps,
 } from "./index"
-import { CloseCircleFilled, CloseOutlined, DownOutlined } from "@loft-enterprise/icons"
 
 /**
  *
