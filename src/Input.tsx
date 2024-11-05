@@ -1,12 +1,10 @@
+import CheckCircleFilled from "@ant-design/icons/CheckCircleFilled"
+import CloseCircleFilled from "@ant-design/icons/CloseCircleFilled"
+import ExclamationCircleFilled from "@ant-design/icons/ExclamationCircleFilled"
 import * as React from "react"
 
 import { cn } from "../clsx"
 import { Tooltip } from "./Tooltip"
-import {
-  CheckCircleFilled,
-  CloseCircleFilled,
-  ExclamationCircleFilled,
-} from "@loft-enterprise/icons"
 
 export type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
   preffix?: React.ReactNode
