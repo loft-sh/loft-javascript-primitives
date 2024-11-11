@@ -1,8 +1,8 @@
+import DownOutlined from "@ant-design/icons/DownOutlined"
 import * as SelectPrimitive from "@radix-ui/react-select"
 import * as React from "react"
 
 import { cn } from "../clsx"
-import { DownOutlined } from "@loft-enterprise/icons"
 
 const Select = SelectPrimitive.Root
 
