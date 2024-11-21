@@ -1,8 +1,8 @@
+import DownOutlined from "@ant-design/icons/DownOutlined"
 import * as AccordionPrimitive from "@radix-ui/react-accordion"
 import * as React from "react"
 
 import cn from "../clsx"
-import { DownOutlined } from "@loft-enterprise/icons"
 
 const Accordion = AccordionPrimitive.Root
 
