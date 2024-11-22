@@ -1,5 +1,8 @@
 /* eslint-disable react/display-name */
+import CloseCircleFilled from "@ant-design/icons/CloseCircleFilled"
+import CloseOutlined from "@ant-design/icons/CloseOutlined"
 import React, { ComponentType, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import ReactSelect, {
   ClearIndicatorProps,
   ControlProps,
@@ -29,12 +32,11 @@ import {
   TSelectMultiValueContainerProps,
   TSelectMultiValueProps,
   TSelectMultiValueRemoveProps,
-  TSelectOptionProps,
   TSelectOptionType,
   TSelectProps,
   TSelectSingleValueProps,
 } from "./index"
-import { CloseCircleFilled, CloseOutlined, DownOutlined } from "@loft-enterprise/icons"
+import { DownOutlined } from "@loft-enterprise/icons"
 
 /**
  *
@@ -69,14 +71,15 @@ function SelectContainer<
       })}>
       {children}
       {memoizedErrorContent && (
-        <Tooltip richTooltip className="z-[9999999] max-w-lg" content={memoizedErrorContent}>
-          <CloseCircleFilled
-            className={cn("absolute right-2 top-1/2 size-4 -translate-y-1/2 text-danger-main", {
-              "bg-white": !isPlain,
-              "bg-transparent": isPlain,
-            })}
-          />
-        </Tooltip>
+        <div
+          className={cn("absolute right-2 top-1/2 size-4 -translate-y-1/2 text-danger-main", {
+            "bg-white": !isPlain,
+            "bg-transparent": isPlain,
+          })}>
+          <Tooltip className="z-top-level" content={memoizedErrorContent}>
+            <CloseCircleFilled />
+          </Tooltip>
+        </div>
       )}
     </div>
   )
@@ -212,7 +215,7 @@ function SelectDropdownIndicator<
 >(props: TSelectDropdownIndicatorProps<OptionType, IsMulti, Group>): React.ReactElement {
   return (
     <DownOutlined
-      className={cx("size-4 rotate-0 opacity-50 transition-all", {
+      className={cx("rotate-0 opacity-50 transition-all *:size-4", {
         "rotate-180": props.selectProps.menuIsOpen,
       })}
     />
@@ -242,13 +245,8 @@ function SelectMenuList<
   )
 }
 
-/**
- *
- * Component that renders each individual option within the dropdown menu.
- * @returns {React.ReactNode}
- */
-const SelectOption = <OptionType extends TSelectOptionType, IsMulti extends boolean>(
-  props: TSelectOptionProps<OptionType, IsMulti> & {
+const SelectOptionBase = <OptionType extends TSelectOptionType, IsMulti extends boolean = false>(
+  props: OptionProps<OptionType, IsMulti, GroupBase<OptionType>> & {
     disabledOptionTooltipText?: string | undefined
   }
 ): React.ReactElement => {
@@ -256,32 +254,38 @@ const SelectOption = <OptionType extends TSelectOptionType, IsMulti extends bool
   const isDisabled = data.extraArgs?.disabled
   const disabledMessage = data.extraArgs?.disabledMessage || props.disabledOptionTooltipText
 
-  return (
-    <Tooltip
-      className={`${isDisabled ? "z-[9999999]" : ""} max-w-[40ch]`}
-      content={isDisabled ? disabledMessage : ""}>
-      <div
-        ref={isDisabled ? undefined : innerRef}
-        {...innerProps}
-        onClick={isDisabled ? undefined : innerProps.onClick}
-        className={cx(
-          `flex items-center justify-between overflow-hidden whitespace-nowrap px-3 py-2 text-sm text-primary`,
-          {
-            "bg-neutral-extra-light": isFocused,
-            "cursor-not-allowed text-tertiary": isDisabled,
-            "cursor-pointer": !isDisabled,
-            "bg-neutral-extra-light/40": isSelected,
-          }
-        )}>
-        <div className="truncate">{children}</div>
-        <span className="ml-2 flex flex-shrink-0 items-center gap-2">
-          {data.extraArgs?.suffix}
-          {data.extraArgs?.tag}
-        </span>
-      </div>
+  const content = (
+    <div
+      ref={isDisabled ? undefined : innerRef}
+      {...innerProps}
+      onClick={isDisabled ? undefined : innerProps.onClick}
+      className={cx(
+        `flex items-center justify-between overflow-hidden whitespace-nowrap px-3 py-2 text-sm text-primary`,
+        {
+          "bg-neutral-extra-light": isFocused,
+          "cursor-not-allowed text-tertiary": isDisabled,
+          "cursor-pointer": !isDisabled,
+          "bg-neutral-extra-light/40": isSelected,
+        }
+      )}>
+      <div className="truncate">{children}</div>
+      <span className="ml-2 flex flex-shrink-0 items-center gap-2">
+        {data.extraArgs?.suffix}
+        {data.extraArgs?.tag}
+      </span>
+    </div>
+  )
+
+  return isDisabled ? (
+    <Tooltip className="z-top-level max-w-[40ch]" content={disabledMessage}>
+      {content}
     </Tooltip>
+  ) : (
+    content
   )
 }
+
+const SelectOption = React.memo(SelectOptionBase) as typeof SelectOptionBase
 
 const SelectControl = <OptionType extends TSelectOptionType, IsMulti extends boolean>(
   props: TSelectControlProps<OptionType, IsMulti> & {
@@ -363,12 +367,18 @@ const Select = React.memo(
     disabledOptionTooltipText,
     placeholder,
     isClearable,
+    usePortal,
     variant = SelectVariant.STANDARD,
     ...props
-  }: TSelectProps<OptionType, IsMulti> & { variant?: SelectVariant }): React.ReactElement => {
+  }: TSelectProps<OptionType, IsMulti> & {
+    variant?: SelectVariant
+    usePortal?: boolean
+  }): React.ReactElement => {
     const [internalValue, setInternalValue] = useState<
       TSelectOptionType | MultiValue<OptionType> | null
     >(null)
+
+    const portalRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
       if (typeof value === "string") {
@@ -423,16 +433,20 @@ const Select = React.memo(
     )
     const SelectComponent = onCreateOption ? CreatableSelect : ReactSelect
     const InputComponent = React.useCallback(
-      (props: InputProps<TSelectOptionType, IsMulti, GroupBase<TSelectOptionType>>) =>
-        variant === SelectVariant.PLAIN ? undefined : (
+      (props: InputProps<TSelectOptionType, IsMulti, GroupBase<TSelectOptionType>>) => {
+        return variant === SelectVariant.PLAIN ? undefined : (
           <SelectInput {...props} inputPrefix={inputPrefix} />
-        ),
-      [inputPrefix]
+        )
+      },
+      [inputPrefix, variant]
     )
 
-    const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
-      if (event.key === "Escape" && menuIsOpen) event.stopPropagation()
-    }
+    const handleKeyDown = useCallback(
+      (event: React.KeyboardEvent<HTMLElement>) => {
+        if (event.key === "Escape" && menuIsOpen) event.stopPropagation()
+      },
+      [menuIsOpen]
+    )
 
     const hasPrefix = !!inputPrefix
 
@@ -454,7 +468,12 @@ const Select = React.memo(
           />
         )),
         Option: (props: OptionProps<OptionType, IsMulti, GroupBase<OptionType>>) => {
-          return <SelectOption {...props} disabledOptionTooltipText={disabledOptionTooltipText} />
+          return (
+            <SelectOption<OptionType, IsMulti>
+              {...props}
+              disabledOptionTooltipText={disabledOptionTooltipText}
+            />
+          )
         },
         Input: InputComponent as unknown as ComponentType<
           InputProps<OptionType, IsMulti, GroupBase<OptionType>>
@@ -481,45 +500,117 @@ const Select = React.memo(
       }),
       [
         InputComponent,
-        error,
         components,
+        variant,
+        inputPrefix,
+        memoizedContainer,
         isDisabled,
         disabledOptionTooltipText,
         hasPrefix,
-        inputPrefix,
-        variant,
       ]
     ) as Partial<SelectComponents<OptionType, IsMulti, GroupBase<OptionType>>> | undefined
 
+    const formatCreateLabel = useCallback((inputValue: string) => `${inputValue}`, [])
+    const handleBlur = useCallback(
+      (e: any) => {
+        handleMenuClose()
+        onBlur?.(e)
+      },
+      [handleMenuClose, onBlur]
+    )
+
+    const selectProps = useMemo(
+      () => ({
+        isClearable,
+        isDisabled,
+        isSearchable: true,
+        isMulti,
+        components: memoizedComponents,
+        unstyled: true,
+        options: memoizedOptions,
+        formatCreateLabel,
+        onCreateOption: handleCreate,
+        value: internalValue as OptionType,
+        onChange: handleChange,
+        onKeyDown: handleKeyDown,
+        onMenuOpen: handleMenuOpen,
+        onMenuClose: handleMenuClose,
+        menuIsOpen,
+        onBlur: handleBlur,
+        closeMenuOnSelect,
+        placeholder,
+      }),
+      [
+        isClearable,
+        isDisabled,
+        isMulti,
+        memoizedComponents,
+        memoizedOptions,
+        formatCreateLabel,
+        handleCreate,
+        internalValue,
+        handleChange,
+        handleKeyDown,
+        handleMenuOpen,
+        handleMenuClose,
+        menuIsOpen,
+        handleBlur,
+        closeMenuOnSelect,
+        placeholder,
+      ]
+    )
+
+    // If we use the portal method for rendering the menu, we need to remove it on scroll outside the menu,
+    // otherwise it might end up rendering in places where it shouldn't. This is the same behavior that the
+    // standard <select> has.
+
+    usePortalResetOnScroll(menuIsOpen, setMenuIsOpen, usePortal)
+
     return (
-      <div className="w-full" ref={selectRef}>
-        <SelectComponent
-          isClearable={isClearable}
-          isDisabled={isDisabled}
-          isSearchable
-          isMulti={isMulti}
-          components={memoizedComponents}
-          unstyled
-          options={memoizedOptions}
-          formatCreateLabel={(inputValue) => `${inputValue}`}
-          onCreateOption={handleCreate}
-          value={internalValue as OptionType}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          onMenuOpen={handleMenuOpen}
-          onMenuClose={handleMenuClose}
-          menuIsOpen={menuIsOpen}
-          onBlur={(e) => {
-            handleMenuClose()
-            onBlur?.(e)
-          }}
-          closeMenuOnSelect={closeMenuOnSelect}
-          placeholder={placeholder}
-        />
-      </div>
+      <>
+        <div className="w-full" ref={selectRef}>
+          <SelectComponent {...selectProps} menuPortalTarget={portalRef.current ?? undefined} />
+        </div>
+
+        {/* Allow the menu to render outside the select to prevent clipping.
+            However, we can't just let react-select create its own portal, because it will not handle our z-indices well.
+            So we create a portal for it to create its own portal in.
+            Now you're thinking with portals. */}
+        {usePortal &&
+          createPortal(
+            <div className={"fixed left-0 top-0 z-top-level"} ref={portalRef}></div>,
+            document.body
+          )}
+      </>
     )
   }
 )
+
+function usePortalResetOnScroll(
+  menuIsOpen: boolean,
+  setMenuIsOpen: (open: boolean) => void,
+  usePortal: boolean | undefined
+) {
+  useEffect(() => {
+    if (menuIsOpen && usePortal) {
+      const onScroll = (e: Event) => {
+        const classList = (
+          e.target as unknown as { classList: DOMTokenList | undefined } | undefined
+        )?.classList
+
+        if (!classList?.contains("select-menu-list")) {
+          setMenuIsOpen(false)
+        }
+      }
+
+      window.addEventListener("scroll", onScroll, true)
+
+      return () => {
+        window.removeEventListener("scroll", onScroll, true)
+      }
+    }
+  }, [menuIsOpen, setMenuIsOpen, usePortal])
+}
 
 Select.displayName = "Select"
 
