@@ -1,11 +1,9 @@
+import CheckCircleFilled from "@ant-design/icons/CheckCircleFilled"
+import CloseCircleFilled from "@ant-design/icons/CloseCircleFilled"
+import ExclamationCircleFilled from "@ant-design/icons/ExclamationCircleFilled"
 import * as React from "react"
 
 import { cn } from "../clsx"
-import {
-  CheckCircleFilled,
-  CloseCircleFilled,
-  ExclamationCircleFilled,
-} from "@loft-enterprise/icons"
 
 type ExtendedInputContextType = {
   hasPrefix?: boolean
