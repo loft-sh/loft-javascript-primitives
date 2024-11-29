@@ -3,6 +3,7 @@ import * as SelectPrimitive from "@radix-ui/react-select"
 import * as React from "react"
 
 import { cn } from "../clsx"
+import { SelectEmptyState, SelectEmptyStateProps } from "./Select/SelectEmptyState"
 
 const Select = SelectPrimitive.Root
 
@@ -56,31 +57,38 @@ SelectTrigger.displayName = SelectPrimitive.Trigger.displayName
 
 const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
->(({ className, children, position = "popper", ...props }, ref) => (
-  <SelectPrimitive.Portal>
-    <SelectPrimitive.Content
-      ref={ref}
-      className={cn(
-        "relative z-[1100] max-h-96 overflow-hidden rounded-md border bg-white text-primary shadow-md data-[side=bottom]:animate-slide-in-top data-[side=left]:animate-slide-in-right data-[side=right]:animate-slide-in-left data-[side=top]:animate-slide-in-bottom data-[state=closed]:animate-out data-[state=open]:animate-in",
-        position === "popper" &&
-          "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
-        className
-      )}
-      position={position}
-      sideOffset={-3}
-      {...props}>
-      <SelectPrimitive.Viewport
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content> & {
+    emptyStateProps?: SelectEmptyStateProps
+  }
+>(({ className, children, position = "popper", emptyStateProps, ...props }, ref) => {
+  const hasChildren = !!(children && (!Array.isArray(children) || children.length))
+
+  return (
+    <SelectPrimitive.Portal>
+      <SelectPrimitive.Content
+        ref={ref}
         className={cn(
-          "p-1",
+          "relative z-[1100] max-h-96 overflow-hidden rounded-md border bg-white text-primary shadow-md data-[side=bottom]:animate-slide-in-top data-[side=left]:animate-slide-in-right data-[side=right]:animate-slide-in-left data-[side=top]:animate-slide-in-bottom data-[state=closed]:animate-out data-[state=open]:animate-in",
           position === "popper" &&
-            "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]"
-        )}>
-        {children}
-      </SelectPrimitive.Viewport>
-    </SelectPrimitive.Content>
-  </SelectPrimitive.Portal>
-))
+            "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
+          className
+        )}
+        position={position}
+        sideOffset={-3}
+        {...props}>
+        <SelectPrimitive.Viewport
+          className={cn(
+            "p-1",
+            position === "popper" &&
+              "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]"
+          )}>
+          {!hasChildren && <SelectEmptyState {...emptyStateProps} />}
+          {children}
+        </SelectPrimitive.Viewport>
+      </SelectPrimitive.Content>
+    </SelectPrimitive.Portal>
+  )
+})
 SelectContent.displayName = SelectPrimitive.Content.displayName
 
 const SelectLabel = React.forwardRef<

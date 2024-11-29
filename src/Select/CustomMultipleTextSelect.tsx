@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from "react"
 import { GroupBase, MultiValue, SetValueAction } from "react-select"
 
-import { cx } from "../../clsx"
+import { cn, cx } from "../../clsx"
 import { Checkbox } from "../Checkbox"
 import { Select } from "./Select"
+import { SelectEmptyState } from "./SelectEmptyState"
 import {
   MultipleTextSelectOptionExtraArgs,
   TSelectMenuListProps,
@@ -151,9 +152,12 @@ function MenuList<OptionType extends MultipleSelectOptionType>(
     <div
       ref={menuRef}
       {...props.innerProps}
-      className="border-gray-300 rounded-md border bg-white shadow-lg focus:outline-none"
+      className={cn("border-gray-300 rounded-md border bg-white shadow-lg focus:outline-none", {
+        "cursor-auto": !options.length,
+      })}
       tabIndex={-1}
       onKeyDown={handleKeyDown}>
+      {!options.length && <SelectEmptyState />}
       {options.map((option, index) => (
         <SelectOption
           key={option.value}

@@ -8,6 +8,7 @@ import ReactSelect, {
   ControlProps,
   GroupBase,
   InputProps,
+  MenuListProps,
   MultiValue,
   MultiValueProps,
   OnChangeValue,
@@ -36,6 +37,7 @@ import {
   TSelectProps,
   TSelectSingleValueProps,
 } from "./index"
+import { SelectEmptyState, SelectEmptyStateProps } from "./SelectEmptyState"
 import { DownOutlined } from "@loft-enterprise/icons"
 
 /**
@@ -231,15 +233,25 @@ function SelectMenuList<
   OptionType extends TSelectOptionType,
   IsMulti extends boolean = false,
   Group extends GroupBase<OptionType> = GroupBase<OptionType>,
->(props: TSelectMenuListProps<OptionType, IsMulti, Group>): React.ReactElement {
+>(
+  props: TSelectMenuListProps<OptionType, IsMulti, Group> & {
+    emptyStateProps?: SelectEmptyStateProps
+  }
+): React.ReactElement {
   const height = props.options.length < 7 ? props.options.length * 44 : 156
 
   return (
     <div
       ref={props.innerRef}
-      style={{ maxHeight: `${height}px` }}
+      style={{ maxHeight: props.options.length ? `${height}px` : undefined }}
       // if options are 1 item, set the height to fit the content
-      className={`border-gray-300 select-menu-list mt-1 overflow-y-auto  rounded-md border bg-white shadow-lg`}>
+      className={cn(
+        `border-gray-300 select-menu-list mt-1 overflow-y-auto rounded-md border bg-white shadow-lg`,
+        {
+          "cursor-auto": !props.options.length,
+        }
+      )}>
+      {!props.options.length && <SelectEmptyState {...props.emptyStateProps} />}
       {props.children}
     </div>
   )
@@ -368,11 +380,13 @@ const Select = React.memo(
     placeholder,
     isClearable,
     usePortal,
+    emptyStateProps,
     variant = SelectVariant.STANDARD,
     ...props
   }: TSelectProps<OptionType, IsMulti> & {
     variant?: SelectVariant
     usePortal?: boolean
+    emptyStateProps?: SelectEmptyStateProps
   }): React.ReactElement => {
     const [internalValue, setInternalValue] = useState<
       TSelectOptionType | MultiValue<OptionType> | null
@@ -478,7 +492,9 @@ const Select = React.memo(
         Input: InputComponent as unknown as ComponentType<
           InputProps<OptionType, IsMulti, GroupBase<OptionType>>
         >,
-        MenuList: SelectMenuList,
+        MenuList: React.memo((props: MenuListProps<OptionType, IsMulti>) => (
+          <SelectMenuList {...props} emptyStateProps={emptyStateProps} />
+        )),
         SingleValue: React.memo((props: SingleValueProps<OptionType, IsMulti>) => (
           <SelectSingleValue {...props} variant={variant} hasPrefix={hasPrefix} />
         )),
@@ -507,6 +523,7 @@ const Select = React.memo(
         isDisabled,
         disabledOptionTooltipText,
         hasPrefix,
+        emptyStateProps,
       ]
     ) as Partial<SelectComponents<OptionType, IsMulti, GroupBase<OptionType>>> | undefined
 
