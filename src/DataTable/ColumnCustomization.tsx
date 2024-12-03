@@ -1,7 +1,7 @@
+import SettingOutlined from "@ant-design/icons/SettingOutlined"
 import { Table } from "@tanstack/react-table"
 import React from "react"
 
-import { SettingOutlined } from "@loft-enterprise/icons"
 import {
   Button,
   Checkbox,
