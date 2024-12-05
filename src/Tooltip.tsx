@@ -12,7 +12,6 @@ const TooltipPortal = TooltipPrimitive.Portal
 
 type TTooltip = React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Root> & {
   content?: React.ReactNode
-  wrappingTriggerDiv?: boolean
 } & React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Trigger> &
   React.ComponentPropsWithoutRef<typeof TooltipContent>
 
@@ -28,7 +27,7 @@ const Tooltip = ({
   arrow = true,
   delayDuration = 300,
   onOpenChange,
-  wrappingTriggerDiv = true,
+
   ...rest
 }: TTooltip) => {
   return (
@@ -41,8 +40,7 @@ const Tooltip = ({
         {...rest}>
         {/* asChild can only accept a single child https://github.com/radix-ui/primitives/issues/1979 */}
         <TooltipPrimitive.Trigger asChild>
-          {/* We use this wrapping trigger div so we can pass multiple children to the tooltip without radix throwing an error */}
-          {wrappingTriggerDiv ? <div>{children}</div> : children}
+          <div>{children}</div>
         </TooltipPrimitive.Trigger>
         {!!content && (
           <TooltipPortal container={document.getElementById("tooltip-portal")}>

@@ -1,7 +1,7 @@
 import * as PopoverPrimitive from "@radix-ui/react-popover"
 import * as React from "react"
 
-import { cx } from "../clsx"
+import { cx } from "../clsx/index"
 import { Button } from "./Button"
 
 const PopoverArrow = PopoverPrimitive.Arrow
@@ -24,15 +24,10 @@ const Popover = ({
   onOk,
   onCancel,
   content,
-  onOpenChange,
   ...rest
 }: TPopover) => {
   return (
-    <PopoverPrimitive.Root
-      open={open}
-      onOpenChange={onOpenChange}
-      defaultOpen={defaultOpen}
-      {...rest}>
+    <PopoverPrimitive.Root open={open} defaultOpen={defaultOpen} {...rest}>
       <PopoverPrimitive.Trigger asChild>{children}</PopoverPrimitive.Trigger>
       <PopoverContent side={side} align={align} onOk={onOk} onCancel={onCancel} {...rest}>
         {content}

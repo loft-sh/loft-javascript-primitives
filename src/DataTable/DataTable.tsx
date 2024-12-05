@@ -41,7 +41,6 @@ const TableRow = motion(NormalTableRow)
 
 type Props<TData, TValue> = {
   data: TData[] | undefined
-  className?: string
   columns: ColumnDef<TData, TValue>[]
   controls: (table: ReactTable<TData>) => React.ReactNode
   columnCustomization?: boolean
@@ -89,7 +88,6 @@ function DataTable<TData, TValue>({
   columnKeyPath,
   emptyState,
   onRowClick,
-  className,
 }: Props<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([
     {
@@ -194,15 +192,14 @@ function DataTable<TData, TValue>({
   const [hoveredHeader, setHoveredHeader] = useState<string | undefined>(undefined)
 
   return (
-    <div className={cn("rounded-md border", className)}>
+    <div className="rounded-md border">
       <div className="flex flex-row items-center justify-between">
         <div className="flex flex-row items-center gap-2">
           {controls(table)}
-
           <Button
             data-visible={shouldShowResetFiltersButton}
             variant="ghost"
-            className="opacity-0 transition-opacity data-[visible=false]:h-0 data-[visible=true]:opacity-100"
+            className="opacity-0 transition-opacity data-[visible=true]:opacity-100"
             onClick={() => {
               table.resetColumnFilters()
             }}>

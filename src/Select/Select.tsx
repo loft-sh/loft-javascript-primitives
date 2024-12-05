@@ -1,14 +1,13 @@
 /* eslint-disable react/display-name */
-import CloseCircleFilled from "@ant-design/icons/CloseCircleFilled"
+import CloseCircleFilled from "@ant-design/icons/CloseCircleOutlined"
 import CloseOutlined from "@ant-design/icons/CloseOutlined"
+import DownOutlined from "@ant-design/icons/DownOutlined"
 import React, { ComponentType, useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { createPortal } from "react-dom"
 import ReactSelect, {
   ClearIndicatorProps,
   ControlProps,
   GroupBase,
   InputProps,
-  MenuListProps,
   MultiValue,
   MultiValueProps,
   OnChangeValue,
@@ -37,8 +36,6 @@ import {
   TSelectProps,
   TSelectSingleValueProps,
 } from "./index"
-import { SelectEmptyState, SelectEmptyStateProps } from "./SelectEmptyState"
-import { DownOutlined } from "@loft-enterprise/icons"
 
 /**
  *
@@ -73,15 +70,14 @@ function SelectContainer<
       })}>
       {children}
       {memoizedErrorContent && (
-        <div
-          className={cn("absolute right-2 top-1/2 size-4 -translate-y-1/2 text-danger-main", {
-            "bg-white": !isPlain,
-            "bg-transparent": isPlain,
-          })}>
-          <Tooltip className="z-top-level" content={memoizedErrorContent}>
-            <CloseCircleFilled />
-          </Tooltip>
-        </div>
+        <Tooltip richTooltip className="z-[9999999] max-w-lg" content={memoizedErrorContent}>
+          <CloseCircleFilled
+            className={cn("absolute right-2 top-1/2 size-4 -translate-y-1/2 text-danger-main", {
+              "bg-white": !isPlain,
+              "bg-transparent": isPlain,
+            })}
+          />
+        </Tooltip>
       )}
     </div>
   )
@@ -217,7 +213,7 @@ function SelectDropdownIndicator<
 >(props: TSelectDropdownIndicatorProps<OptionType, IsMulti, Group>): React.ReactElement {
   return (
     <DownOutlined
-      className={cx("rotate-0 opacity-50 transition-all *:size-4", {
+      className={cx("size-4 rotate-0 opacity-50 transition-all", {
         "rotate-180": props.selectProps.menuIsOpen,
       })}
     />
@@ -233,25 +229,15 @@ function SelectMenuList<
   OptionType extends TSelectOptionType,
   IsMulti extends boolean = false,
   Group extends GroupBase<OptionType> = GroupBase<OptionType>,
->(
-  props: TSelectMenuListProps<OptionType, IsMulti, Group> & {
-    emptyStateProps?: SelectEmptyStateProps
-  }
-): React.ReactElement {
+>(props: TSelectMenuListProps<OptionType, IsMulti, Group>): React.ReactElement {
   const height = props.options.length < 7 ? props.options.length * 44 : 156
 
   return (
     <div
       ref={props.innerRef}
-      style={{ maxHeight: props.options.length ? `${height}px` : undefined }}
+      style={{ maxHeight: `${height}px` }}
       // if options are 1 item, set the height to fit the content
-      className={cn(
-        `border-gray-300 select-menu-list mt-1 overflow-y-auto rounded-md border bg-white shadow-lg`,
-        {
-          "cursor-auto": !props.options.length,
-        }
-      )}>
-      {!props.options.length && <SelectEmptyState {...props.emptyStateProps} />}
+      className={`border-gray-300 select-menu-list mt-1 overflow-y-auto  rounded-md border bg-white shadow-lg`}>
       {props.children}
     </div>
   )
@@ -379,20 +365,12 @@ const Select = React.memo(
     disabledOptionTooltipText,
     placeholder,
     isClearable,
-    usePortal,
-    emptyStateProps,
     variant = SelectVariant.STANDARD,
     ...props
-  }: TSelectProps<OptionType, IsMulti> & {
-    variant?: SelectVariant
-    usePortal?: boolean
-    emptyStateProps?: SelectEmptyStateProps
-  }): React.ReactElement => {
+  }: TSelectProps<OptionType, IsMulti> & { variant?: SelectVariant }): React.ReactElement => {
     const [internalValue, setInternalValue] = useState<
       TSelectOptionType | MultiValue<OptionType> | null
     >(null)
-
-    const portalRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
       if (typeof value === "string") {
@@ -447,12 +425,11 @@ const Select = React.memo(
     )
     const SelectComponent = onCreateOption ? CreatableSelect : ReactSelect
     const InputComponent = React.useCallback(
-      (props: InputProps<TSelectOptionType, IsMulti, GroupBase<TSelectOptionType>>) => {
-        return variant === SelectVariant.PLAIN ? undefined : (
+      (props: InputProps<TSelectOptionType, IsMulti, GroupBase<TSelectOptionType>>) =>
+        variant === SelectVariant.PLAIN ? undefined : (
           <SelectInput {...props} inputPrefix={inputPrefix} />
-        )
-      },
-      [inputPrefix, variant]
+        ),
+      [inputPrefix]
     )
 
     const handleKeyDown = useCallback(
@@ -492,9 +469,7 @@ const Select = React.memo(
         Input: InputComponent as unknown as ComponentType<
           InputProps<OptionType, IsMulti, GroupBase<OptionType>>
         >,
-        MenuList: React.memo((props: MenuListProps<OptionType, IsMulti>) => (
-          <SelectMenuList {...props} emptyStateProps={emptyStateProps} />
-        )),
+        MenuList: SelectMenuList,
         SingleValue: React.memo((props: SingleValueProps<OptionType, IsMulti>) => (
           <SelectSingleValue {...props} variant={variant} hasPrefix={hasPrefix} />
         )),
@@ -519,11 +494,9 @@ const Select = React.memo(
         components,
         variant,
         inputPrefix,
-        memoizedContainer,
         isDisabled,
         disabledOptionTooltipText,
         hasPrefix,
-        emptyStateProps,
       ]
     ) as Partial<SelectComponents<OptionType, IsMulti, GroupBase<OptionType>>> | undefined
 
@@ -577,57 +550,13 @@ const Select = React.memo(
       ]
     )
 
-    // If we use the portal method for rendering the menu, we need to remove it on scroll outside the menu,
-    // otherwise it might end up rendering in places where it shouldn't. This is the same behavior that the
-    // standard <select> has.
-
-    usePortalResetOnScroll(menuIsOpen, setMenuIsOpen, usePortal)
-
     return (
-      <>
-        <div className="w-full" ref={selectRef}>
-          <SelectComponent {...selectProps} menuPortalTarget={portalRef.current ?? undefined} />
-        </div>
-
-        {/* Allow the menu to render outside the select to prevent clipping.
-            However, we can't just let react-select create its own portal, because it will not handle our z-indices well.
-            So we create a portal for it to create its own portal in.
-            Now you're thinking with portals. */}
-        {usePortal &&
-          createPortal(
-            <div className={"fixed left-0 top-0 z-top-level"} ref={portalRef}></div>,
-            document.body
-          )}
-      </>
+      <div className="w-full" ref={selectRef}>
+        <SelectComponent {...selectProps} />
+      </div>
     )
   }
 )
-
-function usePortalResetOnScroll(
-  menuIsOpen: boolean,
-  setMenuIsOpen: (open: boolean) => void,
-  usePortal: boolean | undefined
-) {
-  useEffect(() => {
-    if (menuIsOpen && usePortal) {
-      const onScroll = (e: Event) => {
-        const classList = (
-          e.target as unknown as { classList: DOMTokenList | undefined } | undefined
-        )?.classList
-
-        if (!classList?.contains("select-menu-list")) {
-          setMenuIsOpen(false)
-        }
-      }
-
-      window.addEventListener("scroll", onScroll, true)
-
-      return () => {
-        window.removeEventListener("scroll", onScroll, true)
-      }
-    }
-  }, [menuIsOpen, setMenuIsOpen, usePortal])
-}
 
 Select.displayName = "Select"
 
