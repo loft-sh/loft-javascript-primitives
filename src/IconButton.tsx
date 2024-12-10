@@ -1,8 +1,8 @@
+import LoadingOutlined from "@ant-design/icons/LoadingOutlined"
 import { Slot } from "@radix-ui/react-slot"
 import * as React from "react"
 
 import { cx } from "../clsx"
-import { LoadingOutlined } from "@loft-enterprise/icons"
 
 type IconButtonStyles = {
   appearance?: "primary" | "secondary" | "ghost"
