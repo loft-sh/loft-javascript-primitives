@@ -14,7 +14,7 @@ import {
   TSelectProps,
 } from "./types"
 
-type MultipleSelectOptionType = TSelectOptionType<MultipleTextSelectOptionExtraArgs>
+export type MultipleSelectOptionType = TSelectOptionType<MultipleTextSelectOptionExtraArgs>
 
 const MultipleTextSelect = <OptionType extends MultipleSelectOptionType>({
   onCreateOption,
