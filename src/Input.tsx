@@ -1,15 +1,16 @@
+import CheckCircleFilled from "@ant-design/icons/CheckCircleFilled"
+import CloseCircleFilled from "@ant-design/icons/CloseCircleFilled"
+import ExclamationCircleFilled from "@ant-design/icons/ExclamationCircleFilled"
+import EyeInvisibleOutlined from "@ant-design/icons/EyeInvisibleOutlined"
+import EyeOutlined from "@ant-design/icons/EyeOutlined"
 import * as React from "react"
 
 import { cn } from "../clsx"
 import { Tooltip } from "./Tooltip"
-import {
-  CheckCircleFilled,
-  CloseCircleFilled,
-  ExclamationCircleFilled,
-} from "@loft-enterprise/icons"
 
 export type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
   preffix?: React.ReactNode
+  prefixClassName?: string
   suffix?: React.ReactNode
   error?: boolean
   statusText?: string
@@ -19,6 +20,8 @@ export type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
   inputClassName?: string
   resetable?: boolean
   initialValue?: string | number | readonly string[] | undefined
+  groupRef?: React.Ref<HTMLDivElement>
+  showToggle?: boolean
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
@@ -36,6 +39,9 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       inputClassName,
       placeholder,
       statusText,
+      groupRef,
+      prefixClassName,
+      showToggle,
       ...props
     },
     ref
@@ -50,6 +56,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     const initialValue = React.useMemo(() => props.value, [])
 
     const [value, setValue] = React.useState(initialValue || "")
+
+    const [showPassword, setShowPassword] = React.useState(false)
 
     React.useEffect(() => {
       setValue(props.value || "")
@@ -83,8 +91,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
 
       return (
         <div
-          ref={ref}
           role="group"
+          ref={groupRef}
           className={cn(
             "group flex items-center justify-between gap-1 rounded-md border border-divider-main bg-white text-sm text-tertiary transition-colors focus-within:border-primary-dark focus-within:outline-none hover:border-primary-light has-[:disabled]:cursor-not-allowed has-[:disabled]:bg-disabled-light [&_svg]:size-4 [&_svg]:fill-neutral-dark",
             {
@@ -94,10 +102,17 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             className
           )}>
           {preffix && (
-            <div className="pointer-events-none ml-3 flex select-none items-center">{preffix}</div>
+            <div
+              className={cn(
+                "pointer-events-none ml-3 flex select-none items-center",
+                prefixClassName
+              )}>
+              {preffix}
+            </div>
           )}
           <input
-            type={type}
+            ref={ref}
+            type={type === "password" ? (showPassword ? "text" : "password") : type}
             placeholder={placeholder}
             className={cn(
               "peer flex w-full rounded-md border-0 bg-transparent pl-3 text-black outline-none transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-tertiary disabled:cursor-not-allowed disabled:text-disabledColor-dark",
@@ -111,10 +126,10 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             )}
             {...props}
           />
-          {suffix && (
+          {(suffix || (type === "password" && showToggle)) && (
             <div
               className={cn("mr-3 flex select-none items-center gap-1", {
-                "pointer-events-none": !statusText,
+                "pointer-events-none": !statusText && !(type === "password" && showToggle),
               })}>
               {suffix}
               {statusText ? (
@@ -124,6 +139,18 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
               ) : (
                 icon
               )}
+              {type === "password" && showToggle && (
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="pointer-events-auto z-10 cursor-pointer leading-[0] hover:opacity-80">
+                  {showPassword ? (
+                    <EyeInvisibleOutlined className="size-4 fill-neutral-dark" />
+                  ) : (
+                    <EyeOutlined className="size-4 fill-neutral-dark" />
+                  )}
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -131,7 +158,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     }
 
     return (
-      <div className="relative flex items-center">
+      <div className="relative flex items-center" ref={groupRef}>
         {resetable && value !== initialValue && (
           <span
             role="button"
@@ -141,7 +168,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           </span>
         )}
         <input
-          type={type}
+          type={type === "password" ? (showPassword ? "text" : "password") : type}
           className={cn(
             "placeholder:text-muted-foreground peer flex w-full rounded-md border  border-divider-main bg-primary-contrast px-3 text-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-tertiary hover:border-primary-light focus:border-primary-light focus-visible:outline-none active:border-primary-dark disabled:cursor-not-allowed disabled:opacity-50",
             {
@@ -166,7 +193,19 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
               }
             : {})}
         />
-        <div className="pointer-events-none -ml-5 mr-3 flex select-none items-center gap-1">
+        <div className="-ml-5 mr-3 flex select-none items-center gap-1">
+          {type === "password" && showToggle && (
+            <button
+              type="button"
+              className="z-10 size-5 cursor-pointer leading-[0] hover:opacity-80"
+              onClick={() => setShowPassword(!showPassword)}>
+              {showPassword ? (
+                <EyeInvisibleOutlined className="size-4 fill-neutral-dark" />
+              ) : (
+                <EyeOutlined className="size-4 fill-neutral-dark" />
+              )}
+            </button>
+          )}
           <StateIcon
             className={cn("*:transition-colors", {
               "*:!fill-success-main group-hover:*:!fill-success-light ": success,
