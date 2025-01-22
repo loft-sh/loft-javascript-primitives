@@ -1,8 +1,8 @@
+import DownOutlined from "@ant-design/icons/DownOutlined"
 import * as AccordionPrimitive from "@radix-ui/react-accordion"
 import * as React from "react"
 
 import cn from "../clsx"
-import { DownOutlined } from "@loft-enterprise/icons"
 
 const Accordion = AccordionPrimitive.Root
 
@@ -10,29 +10,33 @@ const AccordionItem = React.forwardRef<
   React.ElementRef<typeof AccordionPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Item>
 >(({ className, ...props }, ref) => (
-  <AccordionPrimitive.Item ref={ref} className={className} {...props} />
+  <AccordionPrimitive.Item ref={ref} className={cn("group/accordion", className)} {...props} />
 ))
 AccordionItem.displayName = "AccordionItem"
 
+type TAccordionTriggerProps = React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger> & {
+  customTrigger?: React.ReactNode
+}
+
 const AccordionTrigger = React.forwardRef<
   React.ElementRef<typeof AccordionPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger>
->(({ className, children, ...props }, ref) => (
-  <AccordionPrimitive.Header>
-    <AccordionPrimitive.Trigger
-      ref={ref}
-      className={cn(
-        "group/accordion flex cursor-pointer items-center justify-between bg-transparent p-2 transition-all [&[aria-expanded=true]>svg]:rotate-180",
-        className
-      )}
-      {...props}>
-      {children}
+  TAccordionTriggerProps
+>(({ className, children, customTrigger, ...props }, ref) => (
+  <AccordionPrimitive.Trigger
+    ref={ref}
+    className={cn(
+      "group/accordion flex cursor-pointer items-center justify-between bg-transparent p-2 transition-all [&[aria-expanded=true]>svg]:rotate-180",
+      className
+    )}
+    {...props}>
+    {children}
+    {customTrigger ?? (
       <DownOutlined
         className="transition-transform 
-      duration-200 ease-in-out *:size-3 group-aria-[expanded=true]/accordion:rotate-180"
+        duration-200 ease-in-out *:size-3 group-aria-[expanded=true]/accordion:rotate-180"
       />
-    </AccordionPrimitive.Trigger>
-  </AccordionPrimitive.Header>
+    )}
+  </AccordionPrimitive.Trigger>
 ))
 AccordionTrigger.displayName = AccordionPrimitive.Trigger.displayName
 
@@ -42,7 +46,7 @@ const AccordionContent = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <AccordionPrimitive.Content
     ref={ref}
-    className="overflow-hidden transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
+    className="w-full overflow-hidden transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
     {...props}>
     <div className={cn("", className)}>{children}</div>
   </AccordionPrimitive.Content>
