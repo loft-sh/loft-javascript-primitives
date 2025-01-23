@@ -4,7 +4,7 @@ import cn from "../clsx"
 
 interface FixedTextProps {
   children: React.ReactNode
-  maxWidth: number
+  maxWidth?: number
   parentElement?: string
   style?: CSSProperties
   offset?: number
@@ -20,7 +20,7 @@ const FixedText: React.FC<FixedTextProps> = ({
   offset = 0,
 }) => {
   const ref = useRef<HTMLDivElement>(null)
-  const [effectiveMaxWidth, setEffectiveMaxWidth] = useState<string | number>(maxWidth)
+  const [effectiveMaxWidth, setEffectiveMaxWidth] = useState<string | number>(maxWidth ?? "100%")
 
   const updateWidth = useCallback(() => {
     if (!parentElement || !ref.current) return
@@ -29,7 +29,7 @@ const FixedText: React.FC<FixedTextProps> = ({
     if (!parent) return
 
     const parentWidth = parent.clientWidth - offset
-    const isOverflow = parentWidth <= maxWidth + offset
+    const isOverflow = parentWidth <= (maxWidth ?? 100) + offset
 
     setEffectiveMaxWidth(isOverflow ? parentWidth : "100%")
   }, [maxWidth, parentElement, offset])
