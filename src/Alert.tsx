@@ -1,13 +1,11 @@
+import BulbOutlined from "@ant-design/icons/BulbOutlined"
+import ExclamationCircleFilled from "@ant-design/icons/ExclamationCircleFilled"
+import InfoCircleOutlined from "@ant-design/icons/InfoCircleOutlined"
+import WarningOutlined from "@ant-design/icons/WarningOutlined"
 import React from "react"
 
 import cn from "../clsx"
 import { Button, ButtonProps } from "./Button"
-import {
-  BulbOutlined,
-  ExclamationCircleFilled,
-  InfoCircleOutlined,
-  WarningOutlined,
-} from "@loft-enterprise/icons"
 
 type Props = {
   title?: string
@@ -16,7 +14,7 @@ type Props = {
   onButtonClick?: () => Promise<void>
   linkText?: string
   linkUrl?: string
-  variant?: "info" | "warning" | "error" | "blank"
+  variant?: "info" | "warning" | "error" | "blank" | "neutral" | "danger"
   className?: string
   children?: React.ReactNode
   icon?: React.ReactNode
@@ -36,14 +34,20 @@ function Alert({
 }: Props) {
   const icon = {
     info: <InfoCircleOutlined />,
+    neutral: <InfoCircleOutlined />,
     warning: <WarningOutlined />,
     error: <ExclamationCircleFilled />,
     blank: <BulbOutlined />,
+    danger: <WarningOutlined />,
   }
 
   const buttonChild = React.Children.toArray(children).find(
     (child) => React.isValidElement(child) && (child.type as any)?.name === "AlertButton"
   ) as React.ReactElement | undefined
+
+  const contentChildren = React.Children.toArray(children).filter(
+    (child) => !React.isValidElement(child) || (child.type as any)?.name !== "AlertButton"
+  )
 
   return (
     <div
@@ -51,14 +55,21 @@ function Alert({
         "border-primary-light bg-primary-extra-light": variant === "info",
         "border-warning-light bg-warning-extra-light": variant === "warning",
         "border-error-light bg-error-extra-light": variant === "error",
+        "border-neutral-light bg-neutral-extra-light": variant === "neutral",
         "border-neutral-light": variant === "blank",
+        "border-danger-light bg-danger-extra-light": variant === "danger",
         "flex flex-col gap-2": title,
       })}>
       <span className="flex flex-row items-center gap-2 [&_svg]:size-4">
         {Icon ? Icon : icon[variant]}
-        {title ? <span className="font-bold">{title}</span> : <span>{text}</span>}
+        {title ? <span className="font-semibold">{title}</span> : <span>{text}</span>}
       </span>
-      {title && <span className="text-primary-main text-sm">{text}</span>}
+      {title &&
+        (contentChildren.length > 0 ? (
+          <span className="text-primary-main text-sm">{contentChildren}</span>
+        ) : (
+          text && <span className="text-primary-main text-sm">{text}</span>
+        ))}
       <div className="flex flex-row items-center gap-2">
         {buttonText && !buttonChild && (
           <Button className="self-start" size="small" onClickAsync={onButtonClick}>
