@@ -1,8 +1,8 @@
+import RightOutlined from "@ant-design/icons/RightOutlined"
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
 import * as React from "react"
 
 import { cn } from "../clsx/index"
-import { RightOutlined } from "@loft-enterprise/icons"
 
 const DropdownMenu = DropdownMenuPrimitive.Root
 
@@ -61,7 +61,10 @@ const DropdownMenuContent = React.forwardRef<
     <DropdownMenuPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
-      className={cn("z-50 w-80 rounded bg-white shadow-small", className)}
+      className={cn(
+        "z-50 flex animate-in flex-col break-words rounded-sm bg-white text-sm text-primary shadow-small data-[state=closed]:animate-out",
+        className
+      )}
       {...props}
     />
   </DropdownMenuPrimitive.Portal>
@@ -137,7 +140,7 @@ const DropdownMenuSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.Separator
     ref={ref}
-    className={cn("h-0.5 w-full bg-divider-main", className)}
+    className={cn("h-[1px] w-full bg-divider-main", className)}
     {...props}
   />
 ))
