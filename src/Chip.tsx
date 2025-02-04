@@ -1,7 +1,7 @@
+import CloseOutlined from "@ant-design/icons/CloseOutlined"
 import React, { LegacyRef } from "react"
 
 import { cn } from "../clsx/index"
-import { CloseOutlined } from "@loft-enterprise/icons"
 
 type Props = {
   size?: "small" | "medium" | "large"
@@ -10,18 +10,27 @@ type Props = {
   clearable?: boolean
   children: React.ReactNode
   onClear?: () => void
+  className?: string
 }
 
 const Chip = React.forwardRef(
   (
-    { size = "medium", appearance = "default", icon, clearable, children, onClear }: Props,
+    {
+      size = "medium",
+      appearance = "default",
+      icon,
+      clearable,
+      children,
+      onClear,
+      className,
+    }: Props,
     ref: React.Ref<HTMLDivElement> | LegacyRef<HTMLDivElement>
   ) => {
     return (
       <div
         ref={ref}
         className={cn(
-          "flex w-fit flex-row items-center gap-1 rounded border   border-neutral-main bg-neutral-light px-1 py-0.5 text-xs font-bold text-tertiary [&_svg]:size-3",
+          "flex w-fit flex-row items-center justify-center gap-1 rounded border border-neutral-main bg-neutral-light px-1 py-0.5 text-xs font-bold text-tertiary [&_svg]:size-3",
           {
             "font-normal [&_svg]:size-2": size === "small",
             "px-1.5": size === "large",
@@ -36,7 +45,8 @@ const Chip = React.forwardRef(
               appearance === "warning",
             "border border-neutral-main bg-neutral-extra-light text-neutral-dark":
               appearance === "neutral",
-          }
+          },
+          className
         )}>
         {icon && (
           <span
