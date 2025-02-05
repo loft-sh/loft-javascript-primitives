@@ -1,9 +1,11 @@
-import React, { useEffect, useRef, useState } from "react"
+import React, { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { GroupBase, MultiValue, SetValueAction } from "react-select"
 
-import { cx } from "../../clsx"
+import { cn, cx } from "../../clsx"
 import { Checkbox } from "../Checkbox"
+import { Input } from "../Input"
 import { Select } from "./Select"
+import { SelectEmptyState } from "./SelectEmptyState"
 import {
   MultipleTextSelectOptionExtraArgs,
   TSelectMenuListProps,
@@ -13,10 +15,25 @@ import {
   TSelectPlaceholderProps,
   TSelectProps,
 } from "./types"
+import { SearchOutlined } from "@loft-enterprise/icons"
+import { wrapNumber } from "@loft-enterprise/shared"
 
-type MultipleSelectOptionType = TSelectOptionType<MultipleTextSelectOptionExtraArgs>
+export type MultipleSelectOptionType = TSelectOptionType<MultipleTextSelectOptionExtraArgs>
 
-const MultipleTextSelect = <OptionType extends MultipleSelectOptionType>({
+type BaseMultipleTextSelectProps = TSelectProps<MultipleSelectOptionType, true> & {
+  showClearIndicator?: boolean
+}
+
+type MultipleTextSelectProps = BaseMultipleTextSelectProps & {
+  valueContainerVariant?: "summary" | "commaSeparated"
+  kind?: string
+  showSelectAllCheckbox?: boolean
+  allowClearSelection?: boolean
+  requireSelection?: boolean
+  searchable?: boolean
+}
+
+const MultipleTextSelect = ({
   onCreateOption,
   onChange,
   options,
@@ -24,9 +41,57 @@ const MultipleTextSelect = <OptionType extends MultipleSelectOptionType>({
   inputPrefix,
   placeholder,
   showClearIndicator,
-}: TSelectProps<OptionType, true> & {
-  showClearIndicator?: boolean
-}): React.ReactElement => {
+  valueContainerVariant = "commaSeparated",
+  kind,
+  showSelectAllCheckbox = false,
+  allowClearSelection = false,
+  requireSelection = false,
+  searchable = false,
+}: MultipleTextSelectProps): React.ReactElement => {
+  const memoizedMenuList = useMemo(
+    // eslint-disable-next-line react/display-name
+    () => (props: MenuListProps) => (
+      <MenuList
+        {...props}
+        showSelectAllCheckbox={showSelectAllCheckbox}
+        allowClearSelection={allowClearSelection}
+        searchable={searchable}
+        requireSelection={requireSelection}
+      />
+    ),
+    [searchable, allowClearSelection, requireSelection, showSelectAllCheckbox]
+  )
+
+  const memoizedComponents = useMemo(
+    () => ({
+      ValueContainer: (props: any) => (
+        <ValueContainer
+          {...props}
+          inputPrefix={inputPrefix}
+          valueContainerVariant={valueContainerVariant}
+          kind={kind}
+        />
+      ),
+      MultiValue: () => null,
+      Input: () => <span className="py-4"></span>,
+      MenuList: memoizedMenuList,
+      Placeholder: (props: any) => (
+        <Placeholder {...props} inputPrefix={inputPrefix} placeholder={placeholder} />
+      ),
+      ...(!showClearIndicator && { ClearIndicator: () => null }),
+      Option: (props: any) => <SelectOption {...props} requireSelection={requireSelection} />,
+    }),
+    [
+      requireSelection,
+      showClearIndicator,
+      inputPrefix,
+      placeholder,
+      kind,
+      valueContainerVariant,
+      memoizedMenuList,
+    ]
+  )
+
   return (
     <Select
       isMulti
@@ -34,19 +99,19 @@ const MultipleTextSelect = <OptionType extends MultipleSelectOptionType>({
       value={value}
       onChange={onChange as (newValue: TSelectOptionType | TSelectOptionType[] | null) => void}
       onCreateOption={onCreateOption}
-      components={{
-        ValueContainer: (props: any) => <ValueContainer {...props} inputPrefix={inputPrefix} />,
-        MultiValue: () => null,
-        Input: () => <span className="py-4"></span>,
-        MenuList: MenuList,
-        Placeholder: (props: any) => (
-          <Placeholder {...props} inputPrefix={inputPrefix} placeholder={placeholder} />
-        ),
-        ...(!showClearIndicator && { ClearIndicator: () => null }),
-      }}
+      components={memoizedComponents}
       closeMenuOnSelect={false}
     />
   )
+}
+
+type BaseValueContainerProps = TSelectMultiValueContainerProps<MultipleSelectOptionType, true> & {
+  inputPrefix?: React.ReactElement
+}
+
+type ValueContainerProps = BaseValueContainerProps & {
+  valueContainerVariant?: "summary" | "commaSeparated"
+  kind?: string
 }
 
 const ValueContainer = ({
@@ -54,50 +119,98 @@ const ValueContainer = ({
   getValue,
   selectProps: { onMenuOpen },
   inputPrefix,
-}: TSelectMultiValueContainerProps<MultipleSelectOptionType, true> & {
-  inputPrefix?: React.ReactElement
-}) => {
+  valueContainerVariant,
+  kind,
+}: ValueContainerProps): React.ReactElement => {
   const options = getValue()
-  let label = ""
 
-  if (options.length > 0 && options[0]) {
-    label =
-      options.length === 1 ? options[0].label : `${options[0].label} + ${options.length - 1} more`
-  }
+  const label = useMemo(() => {
+    if (valueContainerVariant === "summary") {
+      if (options.length === 0) {
+        return `All ${kind}`
+      }
+
+      return `${options.length} ${kind} selected`
+    }
+
+    if (valueContainerVariant === "commaSeparated") {
+      if (options.length > 0 && options[0]) {
+        return `${options.length === 1 ? options[0].label : `${options[0].label} + ${options.length - 1} more`}`
+      }
+    }
+
+    return ""
+  }, [valueContainerVariant, options, kind])
 
   return (
     <div
       onClick={onMenuOpen}
       className="value-container flex w-full select-none items-center gap-1.5 pl-3 text-sm text-tertiary">
       {inputPrefix}
-      <span className="w-[80px] truncate md:w-[120px]">{label}</span>
+      <span className="value-container-label w-[80px] truncate md:w-[120px]">{label}</span>
       <span className="py-4">{children}</span>
     </div>
   )
 }
 
 const SelectOption = <OptionType extends MultipleSelectOptionType>(
-  props: TSelectOptionProps<OptionType, true>
+  props: Omit<TSelectOptionProps<OptionType, boolean>, "isFocused"> & {
+    requireSelection?: boolean
+    focusRequested?: boolean
+    resetFocusRequested?: () => void
+  }
 ): React.ReactElement => {
-  const { innerRef, innerProps, children, isFocused, isSelected } = props
+  const {
+    innerRef,
+    innerProps,
+    children,
+    isSelected,
+    requireSelection,
+    focusRequested,
+    resetFocusRequested,
+  } = props
+  const selectedOptions = props.getValue()
+
+  const isLastSelected = requireSelection && selectedOptions.length === 1 && isSelected
+  const isClickable = !isLastSelected
 
   const bgStyles = {
-    "bg-neutral-light": isFocused,
-    "bg-neutral-extra-light": isSelected,
+    "bg-neutral-extra-light": !props.data.extraArgs?.displayCheckbox && isSelected,
   }
+
+  const containerRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (focusRequested) {
+      containerRef.current?.focus()
+      resetFocusRequested?.()
+    }
+  }, [focusRequested, resetFocusRequested])
 
   return (
     <div
+      ref={containerRef}
+      tabIndex={0}
       {...innerProps}
+      onClick={(e) => {
+        if (!isLastSelected) {
+          innerProps.onClick?.(e)
+        }
+      }}
       className={cx(
-        "flex w-full cursor-pointer select-none flex-row items-center text-sm text-primary",
+        "flex w-full select-none flex-row items-center text-sm text-primary focus-within:bg-neutral-light focus-within:outline-none",
+        isClickable ? "cursor-pointer" : "cursor-default",
         bgStyles
       )}>
       {props.data.extraArgs?.displayCheckbox ? (
         <Checkbox
           tabIndex={-1}
           checked={isSelected}
-          className={"pointer-events-none ml-3"}></Checkbox>
+          disabled={isLastSelected}
+          className={cx("pointer-events-none ml-3", {
+            "opacity-50": isLastSelected,
+          })}
+        />
       ) : undefined}
       <div
         ref={innerRef}
@@ -108,16 +221,52 @@ const SelectOption = <OptionType extends MultipleSelectOptionType>(
   )
 }
 
+type MenuListProps = TSelectMenuListProps<
+  MultipleSelectOptionType,
+  boolean,
+  GroupBase<MultipleSelectOptionType>
+> & {
+  showSelectAllCheckbox?: boolean
+  allowClearSelection?: boolean
+  requireSelection?: boolean
+  searchable?: boolean
+}
+
 function MenuList<OptionType extends MultipleSelectOptionType>(
-  props: TSelectMenuListProps<OptionType, true, GroupBase<OptionType>>
+  props: MenuListProps
 ): React.ReactElement {
+  const height = 308 // 7 * 44px per option
+
   const { selectOption } = props as unknown as {
     selectOption: (newValue: TSelectOptionType) => void
   }
 
+  const [searchString, setSearchString] = useState<string | undefined>(undefined)
+
   const options = props.options as OptionType[]
-  const [focusedIndex, setFocusedIndex] = useState<number>(-1)
+  const [focusRequested, setFocusRequested] = useState<number>(-1)
   const menuRef = useRef<HTMLDivElement>(null)
+
+  const resetFocusRequested = useCallback(() => {
+    setFocusRequested(-1)
+  }, [setFocusRequested])
+
+  // Reset autofocus when the filter changes.
+  useEffect(() => {
+    resetFocusRequested()
+  }, [searchString, resetFocusRequested])
+
+  // Apply search & map the data by its original index in the underlying full array.
+  const filteredOptions = useMemo(() => {
+    const indexMapped = options.map((data, id) => ({ data, id }))
+    if (!props.searchable || !searchString) {
+      return indexMapped
+    }
+
+    return indexMapped.filter((op) =>
+      op.data.label.toLowerCase().includes(searchString.toLowerCase())
+    )
+  }, [options, searchString, props.searchable])
 
   useEffect(() => {
     if (menuRef.current) {
@@ -125,71 +274,183 @@ function MenuList<OptionType extends MultipleSelectOptionType>(
     }
   }, [])
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleListKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     switch (event.key) {
+      // Something else deep down is listening to the tab and messing with the tab order.
+      // For better accessibility, we disrupt this disruption.
+      case "Tab": {
+        event.stopPropagation()
+        break
+      }
+    }
+  }
+
+  const handleItemKeyDown = (
+    event: React.KeyboardEvent<HTMLDivElement>,
+    option: MultipleSelectOptionType,
+    filteredIndex: number
+  ) => {
+    switch (event.code) {
       case "ArrowDown":
         event.preventDefault()
-        setFocusedIndex((prevIndex) => (prevIndex + 1) % options.length)
+        setFocusRequested(wrapNumber(filteredIndex + 1, filteredOptions.length))
         break
       case "ArrowUp":
         event.preventDefault()
-        setFocusedIndex((prevIndex) => (prevIndex - 1 + options.length) % options.length)
+        setFocusRequested(wrapNumber(filteredIndex - 1, filteredOptions.length))
         break
+      case "Space":
       case "Enter":
+        event.stopPropagation()
         event.preventDefault()
-        if (focusedIndex !== -1) {
-          const selectedOption = options[focusedIndex]
-          if (selectedOption) {
-            selectOption(selectedOption)
-          }
-        }
+        selectOption(option)
         break
     }
   }
+
+  const stopPropagation = useCallback((e: { stopPropagation: () => void }) => {
+    e.stopPropagation()
+  }, [])
+
+  const searchInputRef = useRef<HTMLInputElement | null>(null)
+
+  const focusInput = useCallback(() => {
+    searchInputRef.current?.focus()
+  }, [])
+
+  const changeSearchString = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      setSearchString(e.target.value ? e.target.value : undefined)
+    },
+    [setSearchString]
+  )
 
   return (
     <div
       ref={menuRef}
       {...props.innerProps}
-      className="border-gray-300 rounded-md border bg-white shadow-lg focus:outline-none"
+      className={cn("border-gray-300 rounded-md border bg-white shadow-lg focus:outline-none", {
+        "cursor-auto": !options.length,
+      })}
       tabIndex={-1}
-      onKeyDown={handleKeyDown}>
-      {options.map((option, index) => (
-        <SelectOption
-          key={option.value}
-          label={option.label}
-          type="option"
-          isDisabled={false}
-          isFocused={index === focusedIndex}
-          clearValue={props.clearValue}
-          cx={props.cx}
-          getStyles={props.getStyles}
-          getClassNames={props.getClassNames}
+      onKeyDown={handleListKeyDown}>
+      {props.showSelectAllCheckbox && (
+        <SelectAllCheckbox
+          options={options}
           getValue={props.getValue}
-          hasValue={props.hasValue}
-          isMulti={props.isMulti}
-          isRtl={props.isRtl}
-          options={props.options}
-          selectOption={selectOption}
-          setValue={
-            props.setValue as (
-              newValue: MultiValue<TSelectOptionType>,
-              action: SetValueAction,
-              option?: TSelectOptionType
-            ) => void
-          }
-          theme={props.theme}
-          innerRef={() => {}}
-          innerProps={{
-            onClick: () => selectOption(option),
-            onMouseEnter: () => setFocusedIndex(index),
-          }}
-          data={option}
-          isSelected={props.getValue().some((value) => value.value === option.value)}
-          selectProps={props.selectProps}>
-          <div>{option.label}</div>
-        </SelectOption>
-      ))}
+          setValue={props.setValue as any}
+          allowClearSelection={props.allowClearSelection}
+        />
+      )}
+      {props.searchable && (
+        <div
+          className={
+            "box-border flex w-full flex-row items-center border-b border-divider-main p-2 "
+          }>
+          <Input
+            ref={searchInputRef}
+            value={searchString ?? ""}
+            preffix={<SearchOutlined className={"!cursor-text"} onClick={focusInput} />}
+            prefixClassName={"pointer-events-auto"}
+            onMouseDown={stopPropagation}
+            onKeyDown={stopPropagation}
+            onChange={changeSearchString}
+            inputClassName={"pl-0.5"}
+            placeholder={"Search..."}
+            type={"text"}
+            spellCheck={false}
+          />
+        </div>
+      )}
+      {!filteredOptions.length && <SelectEmptyState />}
+      <div style={{ maxHeight: `${height}px` }} className={"flex w-full flex-col overflow-y-auto"}>
+        {filteredOptions.map((option, index) => (
+          <SelectOption
+            key={option.data.value}
+            {...props}
+            requireSelection={props.requireSelection}
+            label={option.data.label}
+            type="option"
+            isDisabled={false}
+            focusRequested={index === focusRequested}
+            data={option.data}
+            isSelected={props.getValue().some((value) => value.value === option.data.value)}
+            selectProps={props.selectProps}
+            innerRef={() => {}}
+            innerProps={{
+              onClick: () => selectOption(option.data),
+              onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) =>
+                handleItemKeyDown(e, option.data, index),
+            }}>
+            <div>{option.data.label}</div>
+          </SelectOption>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+interface OptionType {
+  value: string
+  label: string
+}
+
+interface SelectAllCheckboxProps {
+  options: MultipleSelectOptionType[]
+  getValue: () => MultiValue<TSelectOptionType>
+  setValue: (
+    newValue: MultiValue<TSelectOptionType>,
+    action: SetValueAction,
+    option?: TSelectOptionType | undefined
+  ) => void
+  allowClearSelection?: boolean
+}
+
+const SelectAllCheckbox = ({
+  options,
+  getValue,
+  setValue,
+  allowClearSelection = false,
+}: SelectAllCheckboxProps) => {
+  const currentValue = getValue()
+
+  const selectedCount = useMemo(() => {
+    return options.filter((option) => currentValue.some((value) => value.value === option.value))
+      .length
+  }, [options, currentValue])
+
+  const handleChange = useCallback(() => {
+    if (!allowClearSelection || selectedCount < options.length) {
+      const allOptions = options.map((option) => ({
+        value: option.value,
+        label: option.label,
+      }))
+      setValue(allOptions as MultiValue<OptionType>, "select-option", undefined)
+    }
+  }, [selectedCount, options, setValue, allowClearSelection])
+
+  const buttonText = useMemo(() => {
+    if (selectedCount === options.length) {
+      return allowClearSelection ? "Clear Selection" : "All Selected"
+    }
+
+    return "Select All"
+  }, [selectedCount, options.length, allowClearSelection])
+
+  const buttonEnabled = allowClearSelection || selectedCount < options.length
+
+  return (
+    <div className="flex cursor-pointer items-center gap-3 border-b border-divider-main px-3 py-2">
+      <button
+        onClick={handleChange}
+        disabled={!buttonEnabled}
+        className={cn(
+          "text-sm font-medium",
+          buttonEnabled ? "hover:text-primary-dark text-primary" : "cursor-default text-tertiary"
+        )}
+        type="button">
+        {buttonText}
+      </button>
     </div>
   )
 }
