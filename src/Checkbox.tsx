@@ -1,10 +1,10 @@
+import CheckOutlined from "@ant-design/icons/CheckOutlined"
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox"
 import { CheckedState } from "@radix-ui/react-checkbox"
 import * as React from "react"
 
 import { cx } from "../clsx"
 import { Label } from "./Label"
-import { CheckOutlined } from "@loft-enterprise/icons"
 
 type TCheckboxProps = React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root> & {
   children?: React.ReactNode
