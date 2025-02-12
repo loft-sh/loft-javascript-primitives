@@ -1,80 +1,126 @@
-import React from "react"
+import * as CollapsiblePrimitive from "@radix-ui/react-collapsible"
+import React, { useCallback, useState } from "react"
 
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-  cn,
-} from "@loft-enterprise/primitives"
+import { CollapseIcon, DownOutlined, ExpandIcon, RightOutlined } from "@loft-enterprise/icons"
+import { cn, IconButton, Tooltip } from "@loft-enterprise/primitives"
 
-type Props = {
+export enum ExpansionAreaVariant {
+  FLAT = "FLAT",
+  OUTLINE = "OUTLINE",
+  GHOST = "GHOST",
+}
+
+export type CollapseAction = {
+  icon: React.ReactNode
+  tooltip: string
+  disabled?: boolean
+  onClick?: (e: React.MouseEvent<HTMLElement>) => unknown
+}
+
+type BaseProps = {
   children?: React.ReactNode
   className?: string
+  triggerClassName?: string
+  contentClassName?: string
   title: string | React.ReactNode
-  value: string
-  isChild?: boolean
-  size?: "default" | "large"
   description?: string | React.ReactNode
-  open?: boolean
-  variant?: "default" | "descriptive"
+  defaultOpen?: boolean
 }
+
+type GhostVariantProps = BaseProps & {
+  variant: ExpansionAreaVariant.GHOST
+  primaryAction?: CollapseAction
+}
+
+type BoxedProps = BaseProps & {
+  variant?: ExpansionAreaVariant.FLAT | ExpansionAreaVariant.OUTLINE
+  primaryAction?: never
+}
+
+type Props = GhostVariantProps | BoxedProps
 
 function ExpansionArea({
   children,
   title,
-  isChild,
   className,
+  triggerClassName,
+  contentClassName,
   description,
-  value,
-  size = "default",
-  open = false,
-  variant = "default",
+  defaultOpen = false,
+  variant = ExpansionAreaVariant.FLAT,
+  primaryAction,
 }: Props) {
+  const [open, setOpen] = useState<boolean>(defaultOpen)
+
+  const isBoxed = variant === ExpansionAreaVariant.FLAT || variant === ExpansionAreaVariant.OUTLINE
+
+  const primaryActionClick = useCallback(
+    (e: React.MouseEvent<HTMLElement>) => {
+      e.stopPropagation()
+      primaryAction?.onClick?.(e)
+    },
+    [primaryAction]
+  )
+
   return (
-    <Accordion
-      className={cn("w-full", className)}
-      type="single"
-      collapsible
-      defaultValue={open ? value : undefined}>
-      <AccordionItem
-        value={value}
-        className={cn("flex w-full flex-col bg-gray-5 [&_h3]:!mb-0", {
-          "border-none": isChild,
-          "border border-divider-light": !isChild,
-          "bg-transparent": variant === "descriptive",
-        })}>
-        <AccordionTrigger
-          className={cn("flex w-full items-center gap-2", {
-            "text-sm": size === "default",
-            "text-base": size === "large",
-            "flex-row-reverse justify-end": variant === "default",
-            "flex-row justify-between": variant === "descriptive",
+    <CollapsiblePrimitive.Root
+      open={open}
+      onOpenChange={setOpen}
+      className={cn(
+        "flex w-full flex-col",
+        {
+          "rounded-md border border-divider-light": isBoxed,
+          "bg-gray-5": variant === ExpansionAreaVariant.FLAT,
+          "bg-transparent": variant === ExpansionAreaVariant.OUTLINE,
+        },
+        className
+      )}
+      defaultOpen={open ? open : undefined}>
+      <CollapsiblePrimitive.Trigger
+        className={cn(
+          "box-border flex w-full flex-row text-primary",
+          {
+            "p-2": isBoxed,
+          },
+          triggerClassName
+        )}>
+        <div
+          className={cn("flex w-full flex-row items-center", {
+            "gap-2": isBoxed,
+            "gap-1": !isBoxed,
           })}>
-          <div
-            className={cn("flex flex-col items-start gap-2 self-start", {
-              block: variant === "default",
-            })}>
-            <span
-              className={cn("", {
-                "flex flex-col gap-2 text-sm font-semibold": variant === "descriptive",
-              })}>
-              {title}
-            </span>
-            {variant === "descriptive" && description && (
-              <span className="text-left text-xs text-tertiary">{description}</span>
-            )}
+          {!isBoxed ? (
+            <div className={"flex size-8 flex-col items-center justify-center"}>
+              {open ? <DownOutlined /> : <RightOutlined />}
+            </div>
+          ) : undefined}
+          <div className={"flex flex-col"}>
+            <div className={cn("text-sm font-medium text-primary")}>{title}</div>
+            {description && <div className="text-xs font-medium text-tertiary">{description}</div>}
           </div>
-        </AccordionTrigger>
-        <AccordionContent
-          className={cn("pb-4", {
-            "px-0": isChild,
-            "px-2": !isChild,
-          })}>
-          {children}
-        </AccordionContent>
-      </AccordionItem>
-    </Accordion>
+          {isBoxed ? (
+            <div className={"ml-auto flex size-8 flex-col items-center justify-center"}>
+              {open ? <CollapseIcon /> : <ExpandIcon />}
+            </div>
+          ) : primaryAction ? (
+            <div className={"ml-auto flex size-8 flex-col items-center justify-center"}>
+              <Tooltip className={"z-top-level"} content={primaryAction.tooltip}>
+                <IconButton
+                  appearance="ghost"
+                  onClick={primaryActionClick}
+                  disabled={primaryAction.disabled}>
+                  {primaryAction.icon}
+                </IconButton>
+              </Tooltip>
+            </div>
+          ) : undefined}
+        </div>
+      </CollapsiblePrimitive.Trigger>
+      <CollapsiblePrimitive.Content
+        className={cn({ "p-2": isBoxed, "ml-8 mt-4": !isBoxed }, contentClassName)}>
+        {children}
+      </CollapsiblePrimitive.Content>
+    </CollapsiblePrimitive.Root>
   )
 }
 

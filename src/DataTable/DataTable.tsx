@@ -12,16 +12,19 @@ import {
   SortingState,
   useReactTable,
 } from "@tanstack/react-table"
-import { AnimatePresence, motion } from "framer-motion"
+import { motion } from "framer-motion"
 import React, { CSSProperties, Key, useEffect, useRef, useState } from "react"
+import { useHistory } from "react-router-dom"
 
 import ColumnCustomization from "./ColumnCustomization"
+import TableNoFilterResults from "./components/TableNoFilterResults"
 import { DataTableRowContext } from "./DataTableRowContext"
 import TablePagination from "./Pagination"
 import useMenuVisibility from "./useMenuVisibility"
 import { ResultError } from "@loft-enterprise/client"
 import {
   Button,
+  cn,
   TableRow as NormalTableRow,
   Table,
   TableBody,
@@ -40,6 +43,7 @@ const TableRow = motion(NormalTableRow)
 
 type Props<TData, TValue> = {
   data: TData[] | undefined
+  className?: string
   columns: ColumnDef<TData, TValue>[]
   controls: (table: ReactTable<TData>) => React.ReactNode
   columnCustomization?: boolean
@@ -50,6 +54,7 @@ type Props<TData, TValue> = {
   showResetFiltersButton?: boolean
   resetTableKey?: string
   columnKeyPath?: string[]
+  onRowClick?: (rowKey: Key, rowId: string) => void
   emptyState?: React.ReactNode
 }
 
@@ -85,12 +90,13 @@ function DataTable<TData, TValue>({
   resetTableKey,
   columnKeyPath,
   emptyState,
+  onRowClick,
+  className,
 }: Props<TData, TValue>) {
+  const history = useHistory()
+  const isCreatedColumn = columns.find((column) => column.id === "created")
   const [sorting, setSorting] = useState<SortingState>([
-    {
-      id: "created",
-      desc: true,
-    },
+    isCreatedColumn ? { id: "created", desc: true } : { id: columns[0]?.id as string, desc: false },
   ])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [hoveredRow, setHoveredRow] = useState<string | undefined>(undefined)
@@ -125,7 +131,7 @@ function DataTable<TData, TValue>({
     columnResizeMode: "onChange",
     columnResizeDirection: "ltr",
     defaultColumn: {
-      minSize: 120,
+      minSize: 90,
     },
     state: {
       pagination,
@@ -168,11 +174,13 @@ function DataTable<TData, TValue>({
         pageSize,
       })
       setColumnFilters([])
+      if (hasInitiallyLoaded) {
+        history.replace({ search: "" })
+      }
       setSorting([
-        {
-          id: "created",
-          desc: true,
-        },
+        isCreatedColumn
+          ? { id: "created", desc: true }
+          : { id: columns[0]?.id as string, desc: false },
       ])
       table.toggleAllRowsSelected(false)
     }
@@ -186,36 +194,56 @@ function DataTable<TData, TValue>({
     table.getState().columnSizingInfo.deltaOffset !== 0 &&
     table.getState().columnSizingInfo.deltaOffset !== null
 
-  const [hoveredHeader, setHoveredHeader] = useState<string | undefined>(undefined)
+  const isLoading = !hasInitiallyLoaded && loading
+  const isEmpty = hasInitiallyLoaded && (data?.length === 0 || data === undefined)
+
+  const hasError = error && error.val?.message
+
+  const hasActiveFilters = columnFilters.some((filter) => isFilterSet(filter.value as FilterValue))
+
+  const hasFilteredResults =
+    hasActiveFilters && data && data.length > 0 && table.getRowModel().rows.length === 0
+
+  const shouldDisableHover = isLoading || isEmpty || hasError || hasFilteredResults
+
+  const shouldTableBeFullWidthMain = shouldTableBeFullWidth || data?.length === 0
+
+  const handleResetFilters = () => {
+    history.replace({ search: "" })
+    table.resetColumnFilters()
+  }
 
   return (
-    <div className="rounded-md border">
+    <div className={cn("rounded-md border", className)}>
       <div className="flex flex-row items-center justify-between">
         <div className="flex flex-row items-center gap-2">
           {controls(table)}
+
           <Button
             data-visible={shouldShowResetFiltersButton}
             variant="ghost"
-            className="opacity-0 transition-opacity data-[visible=true]:opacity-100"
-            onClick={() => {
-              table.resetColumnFilters()
-            }}>
+            className="opacity-0 transition-opacity data-[visible=false]:h-0 data-[visible=true]:opacity-100"
+            onClick={handleResetFilters}>
             Reset Filters
           </Button>
         </div>
         {columnCustomization && <ColumnCustomization table={table} />}
       </div>
       <Table
+        containerClassName={cn("overflow-hidden", {
+          "overflow-hidden": hasFilteredResults || isEmpty,
+          "hover:overflow-auto": !hasFilteredResults && !isEmpty,
+        })}
         hasPagination={showPagination && table.getPageCount() > 1}
         ref={tableRef}
         style={{
-          width: shouldTableBeFullWidth || data?.length === 0 ? "100%" : table.getTotalSize(),
+          width: shouldTableBeFullWidthMain ? "100%" : table.getTotalSize(),
         }}>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>
               {headerGroup.headers.map((header) => {
-                const size = header.getSize()
+                const size = header.column.getSize()
                 const acceptsResizing = header.column.getCanResize()
 
                 return (
@@ -228,20 +256,18 @@ function DataTable<TData, TValue>({
                       whiteSpace: "nowrap",
                       width: header.getSize(),
                       ...getCommonPinningStyles(header.column, shouldMenuAppearOnHover, true),
-                    }}
-                    onMouseEnter={() => setHoveredHeader(header.id)}
-                    onMouseLeave={() => setHoveredHeader(undefined)}>
+                    }}>
                     {header.isPlaceholder
                       ? null
                       : flexRender(header.column.columnDef.header, header.getContext())}
                     {acceptsResizing && (
                       <div
-                        className={`absolute right-0 top-0 h-[38px] w-[0.1875rem] cursor-col-resize touch-none select-none bg-primary-main transition-opacity duration-300 ${
-                          hoveredHeader === header.id ? "opacity-100" : "opacity-0"
-                        } ${table.options.columnResizeDirection} ${
-                          header.column.getIsResizing() ? "isResizing" : ""
-                        }
-                        before:absolute before:bottom-0 before:left-[-10px] before:top-0 before:w-[10px] before:cursor-col-resize before:content-['']`}
+                        className={`absolute right-0 top-0 h-[38px] w-[0.1875rem] cursor-col-resize touch-none select-none transition-opacity duration-300 ${
+                          header.column.getIsResizing()
+                            ? "isResizing bg-primary-main"
+                            : "bg-transparent hover:bg-primary-main"
+                        } ${table.options.columnResizeDirection}
+                      before:absolute before:bottom-0 before:left-[-10px] before:top-0 before:w-[10px] before:cursor-col-resize before:content-['']`}
                         {...{
                           onDoubleClick: () => header.column.resetSize(),
                           onMouseDown: header.getResizeHandler(),
@@ -265,78 +291,112 @@ function DataTable<TData, TValue>({
           ))}
         </TableHeader>
         <TableBody>
-          <AnimatePresence mode="popLayout">
-            {table.getRowModel().rows.length ? (
-              table.getRowModel().rows.map((row) => {
-                const key = columnKeyPath
-                  ? columnKeyPath.reduce(
-                      (acc, key) => (acc as Record<string, any>)[key],
-                      row.original
-                    )
-                  : row.id
+          {table.getRowModel().rows.length ? (
+            table.getRowModel().rows.map((row) => {
+              const key = columnKeyPath
+                ? columnKeyPath.reduce((acc, key) => {
+                    if (acc === undefined || acc === null) {
+                      return row.id
+                    }
 
-                return (
-                  <DataTableRowContext.Provider
-                    key={key as Key}
-                    value={{ hoveredRow: hoveredRow, rowId: row.id }}>
-                    <TableRow
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.05 }}
-                      data-row-key={key as Key}
-                      data-state={row.getIsSelected() && "selected"}
-                      onMouseOver={() => setHoveredRow(row.id)}
-                      onMouseLeave={() => setHoveredRow(undefined)}>
-                      {row.getVisibleCells().map((cell) => {
-                        const isPinned = cell.column.getIsPinned()
-                        const isColumnHovered = row.id === hoveredRow
+                    return (acc as Record<string, any>)[key]
+                  }, row.original)
+                : row.id
 
-                        return (
-                          <TableCell
-                            key={cell.id}
-                            data-opacity-transition={
-                              isPinned && !isColumnHovered && !shouldMenuAppearOnHover
+              return (
+                <DataTableRowContext.Provider
+                  key={key as Key}
+                  value={{ hoveredRow: hoveredRow, rowId: row.id }}>
+                  <TableRow
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.05 }}
+                    className={cn({
+                      "cursor-pointer": !!onRowClick,
+                    })}
+                    onClick={() => {
+                      onRowClick?.(key as Key, row.id)
+                    }}
+                    data-row-key={key as Key}
+                    data-state={row.getIsSelected() && "selected"}
+                    onMouseOver={() => setHoveredRow(row.id)}
+                    onMouseLeave={() => setHoveredRow(undefined)}>
+                    {row.getVisibleCells().map((cell) => {
+                      const isPinned = cell.column.getIsPinned()
+                      const isRowHovered = row.id === hoveredRow
+                      const shouldFrostCell = shouldMenuAppearOnHover
+
+                      const hideActions = isPinned && !isRowHovered && !shouldMenuAppearOnHover
+
+                      return (
+                        <TableCell
+                          key={cell.id}
+                          data-opacity-transition={
+                            isPinned && !isRowHovered && !shouldMenuAppearOnHover
+                          }
+                          className={cn(
+                            "overflow-x-hidden text-ellipsis whitespace-nowrap text-xs text-primary",
+
+                            {
+                              "opacity-0": hideActions,
+                              "bg-transparent hover:bg-transparent group-hover:bg-transparent":
+                                isPinned,
+                              "p-0": isPinned,
                             }
-                            className={`overflow-x-hidden text-ellipsis whitespace-nowrap data-[opacity-transition=false]:duration-200 data-[opacity-transition=true]:duration-300 ${isPinned && row.id === hoveredRow ? "opacity-100" : ""}`}
-                            style={{
-                              maxWidth: cell.column.getSize(),
-                              ...getCommonPinningStyles(cell.column, shouldMenuAppearOnHover),
-                              opacity:
-                                isPinned && !isColumnHovered && !shouldMenuAppearOnHover ? 0 : 1,
-                            }}>
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </TableCell>
-                        )
-                      })}
-                    </TableRow>
-                  </DataTableRowContext.Provider>
-                )
-              })
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24">
-                  {!hasInitiallyLoaded && loading ? (
-                    <div className="flex h-full flex-col items-center justify-center">
-                      Loading ...
-                    </div>
-                  ) : null}
+                          )}
+                          style={{
+                            maxWidth: cell.column.getSize(),
+                            ...getCommonPinningStyles(cell.column, shouldMenuAppearOnHover),
+                          }}>
+                          {isPinned ? (
+                            <FrostedCell frostCell={shouldFrostCell}>
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </FrostedCell>
+                          ) : (
+                            flexRender(cell.column.columnDef.cell, cell.getContext())
+                          )}
+                        </TableCell>
+                      )
+                    })}
+                  </TableRow>
+                </DataTableRowContext.Provider>
+              )
+            })
+          ) : (
+            <TableRow>
+              <TableCell
+                colSpan={columns.length}
+                className={cn(
+                  "relative h-24",
+                  shouldDisableHover ? "hover:bg-white group-hover:bg-white" : ""
+                )}>
+                {isLoading ? (
+                  <div className="flex h-full flex-col items-center justify-center">
+                    Loading ...
+                  </div>
+                ) : null}
 
-                  {hasInitiallyLoaded && data?.length === 0
-                    ? emptyState
-                      ? emptyState
-                      : "No data"
-                    : null}
+                {isEmpty ? (
+                  emptyState ? (
+                    <div style={{ maxWidth: tableRef.current?.clientWidth }}>{emptyState}</div>
+                  ) : (
+                    "No data"
+                  )
+                ) : null}
 
-                  {error && error.val?.message && (
-                    <span className="bg-danger-extra-light p-2 text-danger-main">
-                      {error.val.message}
-                    </span>
-                  )}
-                </TableCell>
-              </TableRow>
-            )}
-          </AnimatePresence>
+                {hasError ? (
+                  <span className="bg-danger-extra-light p-2 text-danger-main">
+                    {error.val.message}
+                  </span>
+                ) : null}
+
+                {hasFilteredResults && (
+                  <TableNoFilterResults maxWidth={tableRef.current?.clientWidth} table={table} />
+                )}
+              </TableCell>
+            </TableRow>
+          )}
         </TableBody>
       </Table>
       {showPagination && (
@@ -347,6 +407,55 @@ function DataTable<TData, TValue>({
           pageCount={table.getPageCount()}
         />
       )}
+    </div>
+  )
+}
+
+type FilterValue = string | number | boolean | NameAndStatusFilter | unknown[]
+
+function isFilterSet(value: FilterValue): boolean {
+  if (value === undefined || value === null) {
+    return false
+  }
+
+  if (typeof value === "string") {
+    return value.trim() !== ""
+  }
+
+  if (Array.isArray(value)) {
+    return value.length > 0
+  }
+
+  // Handle the NameAndStatusFilter type
+  if (typeof value === "object" && "name" in value && "status" in value) {
+    const typedValue = value as NameAndStatusFilter
+
+    return typedValue.name.trim() !== "" || typedValue.status.length > 0
+  }
+
+  return true
+}
+
+type FrostedCellProps = {
+  children: React.ReactNode
+  className?: string
+  frostCell?: boolean
+}
+
+function FrostedCell({ children, className, frostCell }: FrostedCellProps) {
+  return (
+    <div className={cn("relative h-full w-full", className)}>
+      <div
+        className={cn(
+          "absolute left-0 top-0 h-full w-full from-table-cell-hover/5 from-0% via-table-cell-hover via-[30%] to-table-cell-hover backdrop-blur-[4px] transition-all group-hover:bg-gradient-to-r",
+          {
+            "bg-table-cell group-hover:bg-table-cell-hover": frostCell,
+          }
+        )}
+      />
+      <div className="relative z-10 flex h-full w-full flex-col items-center justify-center gap-2 px-4 py-2.5">
+        {children}
+      </div>
     </div>
   )
 }
