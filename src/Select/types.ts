@@ -53,6 +53,7 @@ export type TSelectProps<OptionType, IsMulti extends boolean> = Omit<
 }
 
 export type SelectOptionExtraArgs = {
+  icon?: React.ReactNode
   suffix?: React.ReactNode
   tag?: React.ReactNode
   disabled?: boolean

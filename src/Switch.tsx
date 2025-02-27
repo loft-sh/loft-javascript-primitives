@@ -1,9 +1,11 @@
+import CheckOutlined from "@ant-design/icons/CheckOutlined"
+import CloseOutlined from "@ant-design/icons/CloseOutlined"
+import LoadingOutlined from "@ant-design/icons/LoadingOutlined"
 import * as SwitchPrimitives from "@radix-ui/react-switch"
 import * as React from "react"
 
 import { cx } from "../clsx"
 import { Label } from "./Label"
-import { CheckOutlined, CloseOutlined, LoadingOutlined } from "@loft-enterprise/icons"
 
 type TSwitchProps = React.ComponentPropsWithoutRef<typeof SwitchPrimitives.Root> & {
   size?: "small" | "default"
@@ -89,7 +91,7 @@ const Switch = React.forwardRef<React.ElementRef<typeof SwitchPrimitives.Root>, 
             />
           )}
         </SwitchPrimitives.Root>
-        <Label htmlFor={uniqueId} className="flex flex-row">
+        <Label htmlFor={uniqueId} className="flex flex-row p-0">
           {children}
         </Label>
       </div>
