@@ -61,7 +61,7 @@ const TabsContent = React.forwardRef<
   <TabsPrimitive.Content
     ref={ref}
     className={cn(
-      "p-1 transition-opacity data-[state=active]:opacity-100 data-[state=inactive]:opacity-0",
+      "p-1 transition-opacity data-[state=active]:flex-grow data-[state=active]:opacity-100 data-[state=inactive]:opacity-0",
 
       className
     )}
