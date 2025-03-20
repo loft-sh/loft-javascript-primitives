@@ -1,6 +1,6 @@
+import EllipsisOutlined from "@ant-design/icons/EllipsisOutlined"
 import React from "react"
 
-import { EllipsisOutlined } from "@loft-enterprise/icons"
 import {
   Button,
   DropdownMenu,
