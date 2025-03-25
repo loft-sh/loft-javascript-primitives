@@ -1,15 +1,18 @@
+import CheckOutlined from "@ant-design/icons/CheckOutlined"
+import CloseOutlined from "@ant-design/icons/CloseOutlined"
+import LoadingOutlined from "@ant-design/icons/LoadingOutlined"
 import * as SwitchPrimitives from "@radix-ui/react-switch"
 import * as React from "react"
 
-import { cx } from "../clsx"
+import cn, { cx } from "../clsx"
 import { Label } from "./Label"
-import { CheckOutlined, CloseOutlined, LoadingOutlined } from "@loft-enterprise/icons"
 
 type TSwitchProps = React.ComponentPropsWithoutRef<typeof SwitchPrimitives.Root> & {
   size?: "small" | "default"
   loading?: boolean
   showCheckedIcon?: boolean
   children?: React.ReactNode
+  layout?: "row" | "column"
 }
 
 const Switch = React.forwardRef<React.ElementRef<typeof SwitchPrimitives.Root>, TSwitchProps>(
@@ -21,6 +24,7 @@ const Switch = React.forwardRef<React.ElementRef<typeof SwitchPrimitives.Root>, 
       showCheckedIcon = false,
       children,
       id,
+      layout = "row",
       ...props
     },
     ref
@@ -29,7 +33,10 @@ const Switch = React.forwardRef<React.ElementRef<typeof SwitchPrimitives.Root>, 
     const htmlFor = id ?? uniqueId
 
     return (
-      <div className="flex flex-row items-center gap-2">
+      <div
+        className={cn("flex flex-row items-center gap-2", {
+          "flex-col-reverse items-start justify-start": layout === "column",
+        })}>
         <SwitchPrimitives.Root
           data-id={htmlFor}
           checked={props.checked ?? false}
@@ -45,7 +52,7 @@ const Switch = React.forwardRef<React.ElementRef<typeof SwitchPrimitives.Root>, 
             className
           )}
           {...props}
-          id={uniqueId}
+          id={htmlFor}
           ref={ref}>
           {showCheckedIcon && (
             <CheckOutlined
@@ -89,7 +96,7 @@ const Switch = React.forwardRef<React.ElementRef<typeof SwitchPrimitives.Root>, 
             />
           )}
         </SwitchPrimitives.Root>
-        <Label htmlFor={uniqueId} className="flex flex-row">
+        <Label htmlFor={uniqueId} className="flex flex-row p-0">
           {children}
         </Label>
       </div>
