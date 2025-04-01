@@ -52,10 +52,10 @@ export {
 } from "./src/DropdownMenu"
 export { HoverCard, HoverCardTrigger, HoverCardContent } from "./src/HoverCard"
 export { IconButton } from "./src/IconButton"
-export { Input } from "./src/Input"
+export { Input, type InputProps } from "./src/Input"
 export { Label } from "./src/Label"
 export { Popover, PopoverContent, PopoverRoot, PopoverTrigger, PopoverPortal } from "./src/Popover"
-export { Progress } from "./src/Progress"
+export { Progress, ProgressVariant } from "./src/Progress"
 export { RadioGroup, RadioGroupItem } from "./src/RadioGroup"
 export { ScrollArea, ScrollBar } from "./src/ScrollArea"
 export {
@@ -84,7 +84,13 @@ export {
 export { Tabs, TabsList, TabsTrigger, TabsContent } from "./src/Tabs"
 export { Toggle } from "./src/Toggle"
 export { ToggleGroup, ToggleGroupItem } from "./src/ToggleGroup"
-
+export {
+  ModalDialog,
+  type ModalProps,
+  type ModalDialogInstance,
+  type ModalAction,
+  type SecondaryModalAction,
+} from "./src/ModalDialog"
 export { DropdownButton } from "./src/DropdownButton"
 export {
   Tooltip,
@@ -100,3 +106,4 @@ export { Slot } from "@radix-ui/react-slot"
 export * from "./src/index"
 export { Select as EnchangedSelect, SelectVariant } from "./src/Select/Select"
 export { CodeExample } from "./src/CodeExample"
+export { SegmentedToggle } from "./src/SegmentedToggle"
