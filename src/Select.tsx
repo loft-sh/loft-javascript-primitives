@@ -1,8 +1,12 @@
+import DownOutlined from "@ant-design/icons/DownOutlined"
 import * as SelectPrimitive from "@radix-ui/react-select"
 import * as React from "react"
+import { useCallback, useImperativeHandle, useRef } from "react"
 
 import { cn } from "../clsx"
-import { DownOutlined } from "@loft-enterprise/icons"
+import { Input } from "./Input"
+import { SelectEmptyState, SelectEmptyStateProps } from "./Select/SelectEmptyState"
+import { SearchOutlined } from "@loft-enterprise/icons"
 
 const Select = SelectPrimitive.Root
 
@@ -47,40 +51,102 @@ const SelectTrigger = React.forwardRef<
       {...props}>
       {children}
       <SelectPrimitive.Icon asChild>
-        <UsedIcon className="opacity-50 transition-transform *:size-4 group-aria-[expanded=true]:rotate-180" />
+        <UsedIcon className="opacity-50 transition-transform *:size-3.5 group-aria-[expanded=true]:rotate-180" />
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   )
 })
 SelectTrigger.displayName = SelectPrimitive.Trigger.displayName
 
+const SelectSearchInput = React.forwardRef<
+  React.ElementRef<typeof Input>,
+  Omit<
+    React.ComponentPropsWithoutRef<typeof Input>,
+    | "preffix"
+    | "onMouseDown"
+    | "onKeyDown"
+    | "className"
+    | "inputClassName"
+    | "placeholder"
+    | "type"
+    | "spellCheck"
+    | "prefixClassName"
+  >
+>(({ ...props }, ref) => {
+  const innerRef = useRef<HTMLInputElement>(null)
+
+  const focusInput = useCallback(() => {
+    innerRef.current?.focus()
+  }, [])
+
+  const stopPropagation = useCallback((e: { stopPropagation: () => void }) => {
+    e.stopPropagation()
+  }, [])
+
+  useImperativeHandle(ref, () => innerRef.current!)
+
+  return (
+    <div
+      className={"box-border flex w-full flex-row items-center border-b border-divider-main p-2 "}>
+      <Input
+        ref={innerRef}
+        className={"w-full"}
+        preffix={<SearchOutlined className={"!cursor-text"} onClick={focusInput} />}
+        prefixClassName={"pointer-events-auto"}
+        onMouseDown={stopPropagation}
+        onKeyDown={stopPropagation}
+        inputClassName={"pl-0.5"}
+        placeholder={"Search..."}
+        type={"text"}
+        spellCheck={false}
+        {...props}
+      />
+    </div>
+  )
+})
+SelectSearchInput.displayName = "SelectSearchInput"
+
 const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
->(({ className, children, position = "popper", ...props }, ref) => (
-  <SelectPrimitive.Portal>
-    <SelectPrimitive.Content
-      ref={ref}
-      className={cn(
-        "relative z-[1100] max-h-96 overflow-hidden rounded-md border bg-white text-primary shadow-md data-[side=bottom]:animate-slide-in-top data-[side=left]:animate-slide-in-right data-[side=right]:animate-slide-in-left data-[side=top]:animate-slide-in-bottom data-[state=closed]:animate-out data-[state=open]:animate-in",
-        position === "popper" &&
-          "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
-        className
-      )}
-      position={position}
-      sideOffset={-3}
-      {...props}>
-      <SelectPrimitive.Viewport
-        className={cn(
-          "p-1",
-          position === "popper" &&
-            "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]"
-        )}>
-        {children}
-      </SelectPrimitive.Viewport>
-    </SelectPrimitive.Content>
-  </SelectPrimitive.Portal>
-))
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content> & {
+    emptyStateProps?: SelectEmptyStateProps
+    viewPortClassName?: string
+  }
+>(
+  (
+    { className, viewPortClassName, children, position = "popper", emptyStateProps, ...props },
+    ref
+  ) => {
+    const hasChildren = !!(children && (!Array.isArray(children) || children.length))
+
+    return (
+      <SelectPrimitive.Portal>
+        <SelectPrimitive.Content
+          ref={ref}
+          className={cn(
+            "relative z-[1100] max-h-96 overflow-hidden rounded-md border bg-white text-primary shadow-md data-[side=bottom]:animate-slide-in-top data-[side=left]:animate-slide-in-right data-[side=right]:animate-slide-in-left data-[side=top]:animate-slide-in-bottom data-[state=closed]:animate-out data-[state=open]:animate-in",
+            position === "popper" &&
+              "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
+            className
+          )}
+          position={position}
+          sideOffset={-3}
+          {...props}>
+          <SelectPrimitive.Viewport
+            className={cn(
+              "p-1",
+              position === "popper" &&
+                "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]",
+              viewPortClassName
+            )}>
+            {!hasChildren && <SelectEmptyState {...emptyStateProps} />}
+            {children}
+          </SelectPrimitive.Viewport>
+        </SelectPrimitive.Content>
+      </SelectPrimitive.Portal>
+    )
+  }
+)
 SelectContent.displayName = SelectPrimitive.Content.displayName
 
 const SelectLabel = React.forwardRef<
@@ -128,6 +194,7 @@ export {
   SelectGroup,
   SelectValue,
   SelectTrigger,
+  SelectSearchInput,
   SelectContent,
   SelectLabel,
   SelectItem,
