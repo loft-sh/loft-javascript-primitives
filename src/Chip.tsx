@@ -1,7 +1,7 @@
+import CloseOutlined from "@ant-design/icons/CloseOutlined"
 import React, { LegacyRef } from "react"
 
 import { cn } from "../clsx/index"
-import { CloseOutlined } from "@loft-enterprise/icons"
 
 type Props = {
   size?: "small" | "medium" | "large"
