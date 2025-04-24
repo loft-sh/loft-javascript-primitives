@@ -1,7 +1,7 @@
+import RightOutlined from "@ant-design/icons/RightOutlined"
 import { Table } from "@tanstack/react-table"
 import React from "react"
 
-import { RightOutlined } from "@loft-enterprise/icons"
 import { Button } from "@loft-enterprise/primitives"
 
 type Props<TData> = {
