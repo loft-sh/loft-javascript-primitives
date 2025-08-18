@@ -1,14 +1,14 @@
+import LoadingOutlined from "@ant-design/icons/LoadingOutlined"
 import { Slot } from "@radix-ui/react-slot"
 import * as React from "react"
 
-import { cx } from "../clsx"
-import { LoadingOutlined } from "@loft-enterprise/icons"
+import { cn } from "../clsx"
 
 type IconButtonStyles = {
   appearance?: "primary" | "secondary" | "ghost"
 }
 
-type IconButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+export type IconButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   children?: React.ReactNode
   asChild?: boolean
   loading?: boolean
@@ -34,7 +34,7 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
     return (
       <Comp
         data-loading={loading}
-        className={cx(
+        className={cn(
           "ring-offset-background border-1 inline-flex w-fit cursor-pointer items-center justify-center gap-2 whitespace-nowrap    border-transparent text-base transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-offset-2 disabled:pointer-events-none data-[loading=true]:pointer-events-none",
           {
             "p-2": size === "default",
