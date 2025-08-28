@@ -1,10 +1,11 @@
+import SettingOutlined from "@ant-design/icons/SettingOutlined"
 import { Table } from "@tanstack/react-table"
 import React from "react"
 
-import { SettingOutlined } from "@loft-enterprise/icons"
 import {
   Button,
   Checkbox,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -14,9 +15,10 @@ import {
 
 type Props<TData> = {
   table: Table<TData>
+  displayNames?: Record<string, string>
 }
 
-function ColumnCustomization<TData>({ table }: Props<TData>) {
+function ColumnCustomization<TData>({ table, displayNames }: Props<TData>) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -71,7 +73,12 @@ function ColumnCustomization<TData>({ table }: Props<TData>) {
                       }}
                     />
                     <Label htmlFor={column.id} className="w-full text-sm">
-                      <span className="capitalize">{column.id}</span>
+                      <span
+                        className={cn("whitespace-pre-wrap", {
+                          capitalize: !displayNames?.[column.id],
+                        })}>
+                        {displayNames?.[column.id] ?? column.id}
+                      </span>
                     </Label>
                   </div>
                 </div>
