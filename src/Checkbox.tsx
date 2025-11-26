@@ -1,27 +1,28 @@
+import CheckOutlined from "@ant-design/icons/CheckOutlined"
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox"
 import { CheckedState } from "@radix-ui/react-checkbox"
 import * as React from "react"
 
 import { cx } from "../clsx"
 import { Label } from "./Label"
-import { CheckOutlined } from "@loft-enterprise/icons"
 
 type TCheckboxProps = React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root> & {
   children?: React.ReactNode
+  description?: React.ReactNode
 }
 
 export type { CheckedState }
 
 const MaybeWrapper = ({ children, hasLabel }: { children: React.ReactNode; hasLabel: boolean }) => {
   return hasLabel ? (
-    <div className="flex flex-row items-center gap-2">{children}</div>
+    <div className="grid grid-cols-[auto,1fr] items-center gap-x-2">{children}</div>
   ) : (
     <>{children}</>
   )
 }
 
 const Checkbox = React.forwardRef<React.ElementRef<typeof CheckboxPrimitive.Root>, TCheckboxProps>(
-  ({ className, children, ...props }, ref) => {
+  ({ className, children, description, ...props }, ref) => {
     const id = React.useId()
 
     return (
@@ -54,9 +55,15 @@ const Checkbox = React.forwardRef<React.ElementRef<typeof CheckboxPrimitive.Root
           </CheckboxPrimitive.Indicator>
         </CheckboxPrimitive.Root>
         {children && (
-          <Label className="cursor-pointer text-sm text-primary" htmlFor={props.id || id}>
+          <Label className="cursor-pointer pb-0 text-sm text-primary" htmlFor={props.id || id}>
             {children}
           </Label>
+        )}
+        {description && (
+          <>
+            <div>{/* empty cell */}</div>
+            <div className={"text-xs text-tertiary"}>{description}</div>
+          </>
         )}
       </MaybeWrapper>
     )
