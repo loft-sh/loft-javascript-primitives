@@ -1,0 +1,18 @@
+import cn from "clsx"
+import React from "react"
+
+import { InfoCircleOutlined } from "@loft-enterprise/icons"
+
+export function AutocompleteEmptyState() {
+  return (
+    <div
+      className={cn(
+        "box-border flex w-full select-none flex-row transition-colors",
+        "items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none",
+        "text-disabledColor-dark"
+      )}>
+      <InfoCircleOutlined className={"size-4 *:size-4"} />
+      No completions available.
+    </div>
+  )
+}
