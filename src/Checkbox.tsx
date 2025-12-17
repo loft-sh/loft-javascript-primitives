@@ -1,10 +1,10 @@
+import CheckOutlined from "@ant-design/icons/CheckOutlined"
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox"
 import { CheckedState } from "@radix-ui/react-checkbox"
 import * as React from "react"
 
 import { cx } from "../clsx"
 import { Label } from "./Label"
-import { CheckOutlined } from "@loft-enterprise/icons"
 
 type TCheckboxProps = React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root> & {
   children?: React.ReactNode
@@ -54,7 +54,7 @@ const Checkbox = React.forwardRef<React.ElementRef<typeof CheckboxPrimitive.Root
           </CheckboxPrimitive.Indicator>
         </CheckboxPrimitive.Root>
         {children && (
-          <Label className="cursor-pointer text-sm text-primary" htmlFor={props.id || id}>
+          <Label className="cursor-pointer pb-0 text-sm text-primary" htmlFor={props.id || id}>
             {children}
           </Label>
         )}
