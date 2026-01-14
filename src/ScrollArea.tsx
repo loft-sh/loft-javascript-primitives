@@ -1,5 +1,3 @@
-"use client"
-
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area"
 import * as React from "react"
 
@@ -36,7 +34,7 @@ const ScrollBar = React.forwardRef<
       className
     )}
     {...props}>
-    <ScrollAreaPrimitive.ScrollAreaThumb className="relative flex-1 rounded-full bg-disabled-light" />
+    <ScrollAreaPrimitive.ScrollAreaThumb className="relative flex-1 rounded-full bg-gray-20/50 transition-colors hover:bg-gray-30" />
   </ScrollAreaPrimitive.ScrollAreaScrollbar>
 ))
 ScrollBar.displayName = ScrollAreaPrimitive.ScrollAreaScrollbar.displayName
