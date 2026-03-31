@@ -1,8 +1,10 @@
+import RightOutlined from "@ant-design/icons/RightOutlined"
 import { Table } from "@tanstack/react-table"
 import React from "react"
 
-import { RightOutlined } from "@loft-enterprise/icons"
-import { Button } from "@loft-enterprise/primitives"
+import { Button } from "../Button"
+import { Tooltip } from "../Tooltip"
+import { LeftOutlined } from "@loft-enterprise/icons"
 
 type Props<TData> = {
   table: Table<TData>
@@ -22,20 +24,25 @@ function TablePagination<TData>({ table, tableSize, pageCount, pageIndex }: Prop
       className="flex w-full rounded rounded-t-none border border-t-0   border-divider-main bg-white px-2 py-2">
       <div className="relative flex w-full items-center justify-end gap-2 py-4">
         <div className="absolute right-0 flex items-center gap-2"></div>
-        <Button
-          onClick={() => table.previousPage()}
-          disabled={pageIndex === 0}
-          className="h-full px-2"
-          variant="outlined">
-          <RightOutlined className="rotate-180 transform" />
-        </Button>
+        <Tooltip content={"Previous page"} wrappingTriggerDiv={false}>
+          <Button
+            onClick={() => table.previousPage()}
+            disabled={pageIndex === 0}
+            variant={pageIndex === 0 ? "ghost" : "outlined"}
+            className="h-full px-2"
+            appearance="neutral">
+            <LeftOutlined />
+          </Button>
+        </Tooltip>
+
         {Array.from({ length: pageCount }, (_, i) => {
           if (i === 0 || i === pageCount - 1 || (i >= pageIndex - 1 && i <= pageIndex + 1)) {
             return (
               <Button
                 key={i}
-                variant={pageIndex === i ? "filled" : "ghost"}
-                className="rounded border px-3 text-primary disabled:border-primary-dark disabled:bg-primary-extra-light disabled:text-primaryColor-main"
+                appearance="neutral"
+                variant={pageIndex === i ? "outlined" : "ghost"}
+                className="rounded border px-3 text-primary magic-[disabled]:opacity-100 magic-[disabled]:shadow-transparent"
                 onClick={() => table.setPageIndex(i)}
                 disabled={pageIndex === i}>
                 {i + 1}
@@ -57,13 +64,16 @@ function TablePagination<TData>({ table, tableSize, pageCount, pageIndex }: Prop
 
           return null
         })}
-        <Button
-          className="h-full px-2"
-          onClick={() => table.nextPage()}
-          variant="outlined"
-          disabled={pageIndex === pageCount - 1}>
-          <RightOutlined />
-        </Button>
+        <Tooltip content={"Next page"} wrappingTriggerDiv={false}>
+          <Button
+            appearance="neutral"
+            className="h-full px-2"
+            onClick={() => table.nextPage()}
+            variant={pageIndex === pageCount - 1 ? "ghost" : "outlined"}
+            disabled={pageIndex === pageCount - 1}>
+            <RightOutlined />
+          </Button>
+        </Tooltip>
       </div>
     </div>
   )
