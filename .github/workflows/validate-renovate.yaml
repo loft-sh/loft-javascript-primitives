@@ -1,0 +1,22 @@
+# Caller workflow for the reusable validate-renovate workflow in loft-sh/github-actions.
+# Before committing, replace <SHA> with the current commit behind the validate-renovate/v1
+# tag (keeps zizmor's unpinned-uses audit clean):
+#   git ls-remote https://github.com/loft-sh/github-actions "refs/tags/validate-renovate/v1"
+name: Validate Renovate Config
+
+on:
+  pull_request:
+    paths:
+      - 'renovate.json'
+      - 'renovate.json5'
+      - '.renovaterc'
+      - '.renovaterc.json'
+
+permissions: {}
+
+jobs:
+  validate-renovate:
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: loft-sh/github-actions/.github/workflows/validate-renovate.yaml@b52efbd927586ea78282073f79d2423e552c9f62 # validate-renovate/v1
