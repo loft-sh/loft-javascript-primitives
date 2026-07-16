@@ -1,6 +1,6 @@
 import React, { forwardRef } from "react"
 
-import { cn } from "../clsx"
+import { cn } from "../cn-utils"
 
 export type CodeExampleProps = {
   children: React.ReactNode
