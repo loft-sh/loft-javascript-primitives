@@ -1,22 +1,25 @@
+import SettingOutlined from "@ant-design/icons/SettingOutlined"
 import { Table } from "@tanstack/react-table"
 import React from "react"
 
-import { SettingOutlined } from "@loft-enterprise/icons"
+import { cn } from "../../cn-utils"
+import { Button } from "../Button"
+import { Checkbox } from "../Checkbox"
 import {
-  Button,
-  Checkbox,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Label,
-} from "@loft-enterprise/primitives"
+} from "../DropdownMenu"
+import { Label } from "../Label"
+import { TABLE_BATCH_ACTIONS_COLUMN_ID } from "./constants"
 
 type Props<TData> = {
   table: Table<TData>
+  displayNames?: Record<string, string>
 }
 
-function ColumnCustomization<TData>({ table }: Props<TData>) {
+function ColumnCustomization<TData>({ table, displayNames }: Props<TData>) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -27,7 +30,7 @@ function ColumnCustomization<TData>({ table }: Props<TData>) {
       <DropdownMenuContent className="max-w-36" side="bottom" align="end" sticky="always">
         <div>
           {table.getAllLeafColumns().map((column) => {
-            if (column.id === "select" || column.id === "actions") return null
+            if (column.id === TABLE_BATCH_ACTIONS_COLUMN_ID || column.id === "actions") return null
 
             return (
               <DropdownMenuItem
@@ -70,8 +73,13 @@ function ColumnCustomization<TData>({ table }: Props<TData>) {
                         column.getToggleVisibilityHandler()(mockEvent)
                       }}
                     />
-                    <Label htmlFor={column.id} className="w-full text-sm">
-                      <span className="capitalize">{column.id}</span>
+                    <Label htmlFor={column.id} className="w-full pb-0 text-sm">
+                      <span
+                        className={cn("whitespace-pre-wrap", {
+                          capitalize: !displayNames?.[column.id],
+                        })}>
+                        {displayNames?.[column.id] ?? column.id}
+                      </span>
                     </Label>
                   </div>
                 </div>
