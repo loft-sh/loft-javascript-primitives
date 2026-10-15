@@ -1,8 +1,7 @@
 import { createContext } from "react"
 
 export type TableRowContextOptions = {
-  hoveredRow?: string
-  rowId?: string
+  isHovered?: boolean
 }
 
 export const DataTableRowContext = createContext<TableRowContextOptions | undefined>(undefined)
