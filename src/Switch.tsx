@@ -1,15 +1,18 @@
+import CheckOutlined from "@ant-design/icons/CheckOutlined"
+import CloseOutlined from "@ant-design/icons/CloseOutlined"
+import LoadingOutlined from "@ant-design/icons/LoadingOutlined"
 import * as SwitchPrimitives from "@radix-ui/react-switch"
 import * as React from "react"
 
-import { cx } from "../clsx"
+import { cn, cx } from "../cn-utils"
 import { Label } from "./Label"
-import { CheckOutlined, CloseOutlined, LoadingOutlined } from "@loft-enterprise/icons"
 
 type TSwitchProps = React.ComponentPropsWithoutRef<typeof SwitchPrimitives.Root> & {
   size?: "small" | "default"
   loading?: boolean
   showCheckedIcon?: boolean
   children?: React.ReactNode
+  layout?: "row" | "column"
 }
 
 const Switch = React.forwardRef<React.ElementRef<typeof SwitchPrimitives.Root>, TSwitchProps>(
@@ -21,31 +24,45 @@ const Switch = React.forwardRef<React.ElementRef<typeof SwitchPrimitives.Root>, 
       showCheckedIcon = false,
       children,
       id,
+      layout = "row",
       ...props
     },
     ref
   ) => {
     const uniqueId = React.useId()
     const htmlFor = id ?? uniqueId
+    const labelId = `${htmlFor}-label`
+
+    const ariaLabelledBy = props["aria-labelledby"]
+      ? props["aria-labelledby"]
+      : children
+        ? labelId
+        : undefined
 
     return (
-      <div className="flex flex-row items-center gap-2">
+      <div
+        className={cn("flex flex-row items-center gap-2", {
+          "flex-col-reverse items-start justify-start": layout === "column",
+        })}>
         <SwitchPrimitives.Root
           data-id={htmlFor}
           checked={props.checked ?? false}
           className={cx(
-            `focus-visible:ring-ring focus-visible:ring-offset-background group/switch peer relative inline-flex shrink-0 cursor-pointer items-center rounded-full border-0 transition-colors focus-visible:outline-none focus-visible:ring-2  focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50`,
-            "aria-[checked=false]:bg-neutral-main",
+            `focus-visible:ring-ring focus-visible:ring-offset-background group/switch peer relative inline-flex shrink-0 cursor-pointer items-center rounded-full border border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2  focus-visible:ring-offset-2 disabled:cursor-not-allowed`,
             {
+              "aria-[checked=false]:bg-neutral-mid-light": !props.disabled,
+              "disabled:border-disabled-main disabled:bg-none": props.disabled,
               "h-6 w-11": size === "default",
               "h-4 w-7": size === "small",
-              "aria-[checked=false]:bg-disabled-main aria-[checked=true]:bg-primary-light": loading,
-              "aria-[checked=true]:bg-primary-main": !loading,
+              "aria-[checked=false]:bg-disabled-main aria-[checked=true]:bg-neutral-mid-light":
+                loading,
+              "aria-[checked=true]:bg-neutral-dark": !loading && !props.disabled,
             },
             className
           )}
           {...props}
-          id={uniqueId}
+          id={htmlFor}
+          aria-labelledby={ariaLabelledBy}
           ref={ref}>
           {showCheckedIcon && (
             <CheckOutlined
@@ -60,9 +77,11 @@ const Switch = React.forwardRef<React.ElementRef<typeof SwitchPrimitives.Root>, 
           )}
           <SwitchPrimitives.Thumb
             className={cx(
-              "pointer-events-none relative block rounded-full bg-primary-contrast shadow-lg ring-0 transition-transform group-active/switch:scale-x-125 group-active/switch:delay-75",
+              "pointer-events-none relative block rounded-full ring-0 transition-transform group-active/switch:scale-x-125 group-active/switch:delay-75",
               "data-[state=checked]:origin-right data-[state=unchecked]:origin-left data-[state=checked]:translate-x-[107%] data-[state=unchecked]:translate-x-[1.5px]",
               {
+                "bg-neutral-contrast": !props.disabled,
+                "bg-disabled-main": props.disabled,
                 "h-3 w-3 data-[state=checked]:translate-x-2": size === "small",
                 "h-5 w-5 data-[state=checked]:translate-x-4": size === "default",
                 "data-[state=checked]:text-blue-40 data-[state=unchecked]:text-gray-50": loading,
@@ -70,7 +89,7 @@ const Switch = React.forwardRef<React.ElementRef<typeof SwitchPrimitives.Root>, 
             )}>
             {loading && (
               <LoadingOutlined
-                className={cx("text-primary-main absolute inset-0 m-auto animate-spin", {
+                className={cx("absolute inset-0 m-auto animate-spin text-neutral-main", {
                   "*:size-2": size === "small",
                   "*:size-4": size === "default",
                 })}
@@ -89,9 +108,15 @@ const Switch = React.forwardRef<React.ElementRef<typeof SwitchPrimitives.Root>, 
             />
           )}
         </SwitchPrimitives.Root>
-        <Label htmlFor={uniqueId} className="flex flex-row">
-          {children}
-        </Label>
+        {children && (
+          <Label
+            id={labelId}
+            htmlFor={htmlFor}
+            className="flex flex-row p-0"
+            size={size === "small" ? "large" : "large"}>
+            {children}
+          </Label>
+        )}
       </div>
     )
   }
