@@ -1,7 +1,7 @@
 import * as TooltipPrimitive from "@radix-ui/react-tooltip"
 import * as React from "react"
 
-import { cx } from "../clsx/index"
+import { cn, cx } from "../cn-utils"
 import { Button } from "./Button"
 
 const TooltipProvider = TooltipPrimitive.Provider
@@ -12,6 +12,8 @@ const TooltipPortal = TooltipPrimitive.Portal
 
 type TTooltip = React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Root> & {
   content?: React.ReactNode
+  wrappingTriggerDiv?: boolean
+  disableFocusTrigger?: boolean
 } & React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Trigger> &
   React.ComponentPropsWithoutRef<typeof TooltipContent>
 
@@ -27,9 +29,22 @@ const Tooltip = ({
   arrow = true,
   delayDuration = 300,
   onOpenChange,
-
+  wrappingTriggerDiv = true,
+  disableFocusTrigger = false,
   ...rest
 }: TTooltip) => {
+  /**
+   * This is used to prevent the tooltip from opening when the trigger is focused.
+   */
+  const handleFocusCapture = React.useCallback(
+    (e: React.FocusEvent) => {
+      if (disableFocusTrigger) {
+        e.stopPropagation()
+      }
+    },
+    [disableFocusTrigger]
+  )
+
   return (
     <TooltipProvider delayDuration={delayDuration} {...rest}>
       <TooltipPrimitive.Root
@@ -39,8 +54,11 @@ const Tooltip = ({
         onOpenChange={onOpenChange}
         {...rest}>
         {/* asChild can only accept a single child https://github.com/radix-ui/primitives/issues/1979 */}
-        <TooltipPrimitive.Trigger asChild>
-          <div>{children}</div>
+        <TooltipPrimitive.Trigger
+          asChild
+          onFocusCapture={disableFocusTrigger ? handleFocusCapture : undefined}>
+          {/* We use this wrapping trigger div so we can pass multiple children to the tooltip without radix throwing an error */}
+          {wrappingTriggerDiv ? <div>{children}</div> : children}
         </TooltipPrimitive.Trigger>
         {!!content && (
           <TooltipPortal container={document.getElementById("tooltip-portal")}>
@@ -51,7 +69,7 @@ const Tooltip = ({
               onCancel={onCancel}
               arrow={arrow}
               {...rest}
-              className={cx("max-w-sm", rest.className)}>
+              className={cn("z-tooltip max-w-sm", rest.className)}>
               {content}
             </TooltipContent>
           </TooltipPortal>
