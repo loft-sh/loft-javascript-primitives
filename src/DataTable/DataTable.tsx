@@ -1,59 +1,22 @@
-import {
-  Column,
-  ColumnDef,
-  ColumnFiltersState,
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  PaginationState,
-  Table as ReactTable,
-  SortingState,
-  useReactTable,
-} from "@tanstack/react-table"
-import { AnimatePresence, motion } from "framer-motion"
-import React, { CSSProperties, Key, useEffect, useRef, useState } from "react"
+import { Column, flexRender, Header, Table as ReactTable, Row } from "@tanstack/react-table"
+import React, { CSSProperties, useMemo, useRef, useState } from "react"
 
-import ColumnCustomization from "./ColumnCustomization"
+import { cn } from "../../cn-utils"
+import { Alert } from "../Alert"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../Table"
+import { DataTableContext, DataTableContextValue } from "./DataTableContext"
+import { DataTableRow } from "./DataTableRow"
 import { DataTableRowContext } from "./DataTableRowContext"
+import { DataTableSkeleton } from "./DataTableSkeleton"
+import { useAutoFitPageSize } from "./hooks/useAutoFitPageSize"
 import TablePagination from "./Pagination"
+import type { CustomRowContext, ExpansionComponent, ExtendedColumnDef } from "./types"
 import useMenuVisibility from "./useMenuVisibility"
 import { ResultError } from "@loft-enterprise/client"
-import {
-  Button,
-  TableRow as NormalTableRow,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TSelectOptionType,
-} from "@loft-enterprise/primitives"
+import { useMeasureElementWidth } from "@loft-enterprise/shared"
 
-type NameAndStatusFilter = {
-  name: string
-  status: TSelectOptionType[]
-}
-
-const TableRow = motion(NormalTableRow)
-
-type Props<TData, TValue> = {
-  data: TData[] | undefined
-  columns: ColumnDef<TData, TValue>[]
-  controls: (table: ReactTable<TData>) => React.ReactNode
-  columnCustomization?: boolean
-  showPagination?: boolean
-  pageSize?: number
-  loading?: boolean
-  error?: ResultError | undefined
-  showResetFiltersButton?: boolean
-  resetTableKey?: string
-  columnKeyPath?: string[]
-  emptyState?: React.ReactNode
-}
-
-const DEFAULT_PAGE_SIZE = 10
+const DEFAULT_PAGE_SIZE_OPTIONS = [10, 25, 50]
+const INTERACTIVE_ELEMENTS = "a, button, input, label, select, textarea, [role='menuitem']"
 
 function getCommonPinningStyles<TData>(
   column: Column<TData>,
@@ -61,294 +24,408 @@ function getCommonPinningStyles<TData>(
   isHeader?: boolean
 ): CSSProperties {
   const isPinned = column.getIsPinned()
+  const isActions = column.id === "actions"
 
   return {
     left: isPinned === "left" ? `${column.getStart("left")}px` : undefined,
     right: isPinned === "right" ? `${column.getAfter("right")}px` : undefined,
-    position: isPinned && !shouldMenuAppearOnHover ? "sticky" : "initial",
-    zIndex: isPinned && isHeader ? -1 : undefined,
-    pointerEvents: isPinned && isHeader ? "none" : undefined,
+    position:
+      isPinned && !(isActions && (isHeader || shouldMenuAppearOnHover)) ? "sticky" : "relative",
+    zIndex: isPinned ? (isHeader ? 2 : 1) : undefined,
     width: column.getSize(),
   }
 }
 
-function DataTable<TData, TValue>({
-  data,
-  columns,
-  controls,
-  columnCustomization,
-  showPagination = true,
+export type DataTableProps<T> = {
+  table: ReactTable<T>
+  loading?: boolean
+  error?: ResultError
+  emptyState?: React.ReactNode
+  customRowContextProvider?: CustomRowContext<T>
+  expansionComponent?: ExpansionComponent<T>
+  onRowClick?: (row: Row<T>) => void
+  className?: string
+  variant?: "default" | "slim"
+  autoFitPageSize?: boolean
+  permanentScrollbar?: boolean
+}
+
+export function DataTable<TData>({
+  table,
   loading = false,
   error,
-  pageSize = DEFAULT_PAGE_SIZE,
-  showResetFiltersButton,
-  resetTableKey,
-  columnKeyPath,
   emptyState,
-}: Props<TData, TValue>) {
-  const [sorting, setSorting] = useState<SortingState>([
-    {
-      id: "created",
-      desc: true,
-    },
-  ])
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
-  const [hoveredRow, setHoveredRow] = useState<string | undefined>(undefined)
-  const [pagination, setPagination] = React.useState<PaginationState>({
-    pageIndex: 0,
-    pageSize,
-  })
-
-  const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false)
-
-  useEffect(() => {
-    if (!loading && !hasInitiallyLoaded) {
-      setHasInitiallyLoaded(true)
-    }
-  }, [hasInitiallyLoaded, loading])
-
+  customRowContextProvider: CustomRowContextProvider,
+  expansionComponent: ExpansionComponent,
+  onRowClick,
+  className,
+  variant = "default",
+  autoFitPageSize = false,
+  permanentScrollbar = false,
+}: DataTableProps<TData>) {
   const tableRef = useRef<HTMLTableElement>(null)
-
-  const table = useReactTable({
-    data: data || [],
-    columns: columns,
-    getCoreRowModel: getCoreRowModel(),
-    onSortingChange: setSorting,
-    getSortedRowModel: getSortedRowModel(),
-    onColumnFiltersChange: setColumnFilters,
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    onPaginationChange: setPagination,
-    enableMultiRowSelection: true,
-    autoResetPageIndex: false,
-    autoResetExpanded: false,
-    columnResizeMode: "onChange",
-    columnResizeDirection: "ltr",
-    defaultColumn: {
-      minSize: 120,
-    },
-    state: {
-      pagination,
-      sorting,
-      columnFilters,
-      columnPinning: {
-        right: ["actions"],
-      },
-    },
-  })
+  const firstRowRef = useRef<HTMLTableRowElement>(null)
+  const headerRef = useRef<HTMLTableSectionElement>(null)
+  const [hoveredRow, setHoveredRow] = useState<string>()
+  const [openActionMenuRow, setOpenActionMenuRow] = useState<string>()
+  const tableWidth = useMeasureElementWidth(tableRef)
   const { shouldMenuAppearOnHover, shouldTableBeFullWidth } = useMenuVisibility({ tableRef, table })
-
-  const areFiltersSet = columnFilters.some((filter) => {
-    if (filter.value === undefined) {
-      return false
-    }
-
-    if (Array.isArray(filter.value)) {
-      return filter.value.length !== 0
-    }
-
-    const filterValue = filter.value as NameAndStatusFilter
-    if (filterValue.name) {
-      return filterValue.name !== ""
-    }
-
-    if (filterValue.status) {
-      return filterValue.status.length !== 0
-    }
-
-    return filter.value !== ""
+  const pagination = table.getState().pagination
+  const [isPageSizePicked, setIsPageSizePicked] = useState(false)
+  useAutoFitPageSize({
+    enabled: autoFitPageSize && !isPageSizePicked,
+    tableRef,
+    variant,
+    onFit: table.setPageSize,
+    rowCount: table.options.data.length,
+    rowRef: firstRowRef,
+    headerRef,
   })
-
-  const shouldShowResetFiltersButton = showResetFiltersButton && areFiltersSet
-
-  useEffect(() => {
-    function resetTable() {
-      setPagination({
-        pageIndex: 0,
-        pageSize,
-      })
-      setColumnFilters([])
-      setSorting([
-        {
-          id: "created",
-          desc: true,
-        },
-      ])
-      table.toggleAllRowsSelected(false)
-    }
-    if (resetTableKey) {
-      resetTable()
-    }
-  }, [pageSize, resetTableKey, table])
-
-  const isResizing =
-    table.getState().columnSizingInfo.deltaOffset !== undefined &&
-    table.getState().columnSizingInfo.deltaOffset !== 0 &&
-    table.getState().columnSizingInfo.deltaOffset !== null
-
-  const [hoveredHeader, setHoveredHeader] = useState<string | undefined>(undefined)
+  const handlePageSizeChange = (size: number) => {
+    setIsPageSizePicked(true)
+    table.setPagination({ pageIndex: 0, pageSize: size })
+  }
+  const displayColumns = table.getVisibleLeafColumns()
+  const totalRowCount = table.getCoreRowModel().rows.length
+  const shouldShowSkeleton = loading && totalRowCount === 0
+  const skeletonColumnCount = displayColumns.length
+  // With cached rows the error shows above the table, so the body keeps its empty state.
+  const bodyError = totalRowCount === 0 ? error?.val?.message : undefined
+  const isEmpty = !loading && !bodyError && table.getRowModel().rows.length === 0
+  const shouldDisableHover = shouldShowSkeleton || isEmpty || !!error?.val?.message
+  const shouldTableBeFullWidthMain = shouldTableBeFullWidth || isEmpty
+  const isResizing = !!table.getState().columnSizingInfo.isResizingColumn
+  const shouldShowPagination =
+    table.getPrePaginationRowModel().rows.length >
+    Math.min(pagination.pageSize, ...DEFAULT_PAGE_SIZE_OPTIONS)
+  const tableContextValue: DataTableContextValue = useMemo(() => ({ tableRef }), [])
 
   return (
-    <div className="rounded-md border">
-      <div className="flex flex-row items-center justify-between">
-        <div className="flex flex-row items-center gap-2">
-          {controls(table)}
-          <Button
-            data-visible={shouldShowResetFiltersButton}
-            variant="ghost"
-            className="opacity-0 transition-opacity data-[visible=true]:opacity-100"
-            onClick={() => {
-              table.resetColumnFilters()
-            }}>
-            Reset Filters
-          </Button>
-        </div>
-        {columnCustomization && <ColumnCustomization table={table} />}
-      </div>
+    <div className={cn("rounded-md border", className)}>
+      {error?.val?.message && totalRowCount > 0 && (
+        <Alert variant="danger" className="rounded-none border-x-0 border-t-0">
+          {error.val.message}
+        </Alert>
+      )}
       <Table
-        hasPagination={showPagination && table.getPageCount() > 1}
+        aria-busy={loading}
+        containerClassName={cn("overflow-auto", {
+          "overflow-hidden": isEmpty && !permanentScrollbar,
+        })}
+        hasPagination={shouldShowPagination}
         ref={tableRef}
         style={{
-          width: shouldTableBeFullWidth || data?.length === 0 ? "100%" : table.getTotalSize(),
+          width: shouldTableBeFullWidthMain ? "100%" : table.getTotalSize(),
         }}>
-        <TableHeader>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
-              {headerGroup.headers.map((header) => {
-                const size = header.getSize()
-                const acceptsResizing = header.column.getCanResize()
+        <DataTableContext.Provider value={tableContextValue}>
+          <DataTableHeader
+            headerRef={headerRef}
+            table={table}
+            isResizing={isResizing}
+            shouldMenuAppearOnHover={shouldMenuAppearOnHover}
+          />
+          <TableBody>
+            {shouldShowSkeleton ? (
+              <DataTableSkeleton columns={skeletonColumnCount} variant={variant} />
+            ) : table.getRowModel().rows.length > 0 ? (
+              table.getRowModel().rows.map((row, index) => {
+                const isRowHovered = hoveredRow === row.id
+                const isActionMenuOpen = openActionMenuRow === row.id
+                const shouldShowRowActions = isRowHovered || isActionMenuOpen
+                const hasExpansionComponent = !!(row.getIsExpanded() && ExpansionComponent)
 
-                return (
-                  <TableHead
-                    key={header.id}
-                    // react-table sets the position to the header to initial, hence we need to force it.
-                    className={`!relative ${isResizing ? "cursor-col-resize" : ""}`}
-                    style={{
-                      maxWidth: size,
-                      whiteSpace: "nowrap",
-                      width: header.getSize(),
-                      ...getCommonPinningStyles(header.column, shouldMenuAppearOnHover, true),
-                    }}
-                    onMouseEnter={() => setHoveredHeader(header.id)}
-                    onMouseLeave={() => setHoveredHeader(undefined)}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())}
-                    {acceptsResizing && (
-                      <div
-                        className={`absolute right-0 top-0 h-[38px] w-[0.1875rem] cursor-col-resize touch-none select-none bg-primary-main transition-opacity duration-300 ${
-                          hoveredHeader === header.id ? "opacity-100" : "opacity-0"
-                        } ${table.options.columnResizeDirection} ${
-                          header.column.getIsResizing() ? "isResizing" : ""
-                        }
-                        before:absolute before:bottom-0 before:left-[-10px] before:top-0 before:w-[10px] before:cursor-col-resize before:content-['']`}
-                        {...{
-                          onDoubleClick: () => header.column.resetSize(),
-                          onMouseDown: header.getResizeHandler(),
-                          onTouchStart: header.getResizeHandler(),
-                        }}
-                        style={{
-                          transform:
-                            table.options.columnResizeMode === "onEnd" &&
-                            header.column.getIsResizing()
-                              ? `translateX(${
-                                  (table.options.columnResizeDirection === "rtl" ? -1 : 1) *
-                                  (table.getState().columnSizingInfo.deltaOffset ?? 0)
-                                }px)`
-                              : "",
-                        }}></div>
-                    )}
-                  </TableHead>
-                )
-              })}
-            </TableRow>
-          ))}
-        </TableHeader>
-        <TableBody>
-          <AnimatePresence mode="popLayout">
-            {table.getRowModel().rows.length ? (
-              table.getRowModel().rows.map((row) => {
-                const key = columnKeyPath
-                  ? columnKeyPath.reduce(
-                      (acc, key) => (acc as Record<string, any>)[key],
-                      row.original
-                    )
-                  : row.id
-
-                return (
+                const content = (
                   <DataTableRowContext.Provider
-                    key={key as Key}
-                    value={{ hoveredRow: hoveredRow, rowId: row.id }}>
-                    <TableRow
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.05 }}
-                      data-row-key={key as Key}
+                    value={{
+                      isHovered: shouldShowRowActions,
+                      isActionMenuOpen,
+                      setActionMenuOpen: (open) => {
+                        setOpenActionMenuRow((currentOpenRow) => {
+                          if (open) {
+                            return row.id
+                          }
+
+                          return currentOpenRow === row.id ? undefined : currentOpenRow
+                        })
+                      },
+                    }}>
+                    <DataTableRow
+                      ref={index === 0 ? firstRowRef : undefined}
+                      className={cn({
+                        "cursor-pointer": !!onRowClick,
+                      })}
+                      onClick={({ target, currentTarget }) => {
+                        // Controls in the row, and the menus they open in a portal, keep their clicks.
+                        if (
+                          target instanceof Element &&
+                          currentTarget.contains(target) &&
+                          !currentTarget.contains(target.closest(INTERACTIVE_ELEMENTS))
+                        ) {
+                          onRowClick?.(row)
+                        }
+                      }}
+                      data-row-key={row.id}
                       data-state={row.getIsSelected() && "selected"}
                       onMouseOver={() => setHoveredRow(row.id)}
-                      onMouseLeave={() => setHoveredRow(undefined)}>
+                      onMouseLeave={() => setHoveredRow(undefined)}
+                      onFocus={() => setHoveredRow(row.id)}
+                      onBlur={(event) => {
+                        if (!event.currentTarget.contains(event.relatedTarget))
+                          setHoveredRow(undefined)
+                      }}>
                       {row.getVisibleCells().map((cell) => {
                         const isPinned = cell.column.getIsPinned()
-                        const isColumnHovered = row.id === hoveredRow
+                        const shouldFrostCell = shouldMenuAppearOnHover
+                        const columnDef = cell.column.columnDef as ExtendedColumnDef<TData>
+                        const isActions = cell.column.id === "actions"
+                        const hideActions =
+                          isActions && isPinned && !shouldShowRowActions && !shouldMenuAppearOnHover
 
                         return (
                           <TableCell
                             key={cell.id}
+                            variant={variant}
+                            data-column-key={cell.column.id}
                             data-opacity-transition={
-                              isPinned && !isColumnHovered && !shouldMenuAppearOnHover
+                              isActions && isPinned && !isRowHovered && !shouldMenuAppearOnHover
                             }
-                            className={`overflow-x-hidden text-ellipsis whitespace-nowrap data-[opacity-transition=false]:duration-200 data-[opacity-transition=true]:duration-300 ${isPinned && row.id === hoveredRow ? "opacity-100" : ""}`}
+                            className={cn(
+                              "overflow-x-hidden text-ellipsis whitespace-nowrap text-xs text-primary",
+
+                              {
+                                "border-b-none !rounded-b-none border-b-0": hasExpansionComponent,
+                                "bg-table-cell-hover": shouldShowRowActions,
+                                "opacity-0": hideActions,
+                                "bg-transparent hover:bg-transparent group-hover:bg-transparent":
+                                  isActions,
+                                "p-0": isActions,
+                              },
+                              columnDef.cellClassName
+                            )}
                             style={{
                               maxWidth: cell.column.getSize(),
                               ...getCommonPinningStyles(cell.column, shouldMenuAppearOnHover),
-                              opacity:
-                                isPinned && !isColumnHovered && !shouldMenuAppearOnHover ? 0 : 1,
                             }}>
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            {isActions ? (
+                              <FrostedCell frostCell={shouldFrostCell}>
+                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                              </FrostedCell>
+                            ) : (
+                              flexRender(cell.column.columnDef.cell, cell.getContext())
+                            )}
                           </TableCell>
                         )
                       })}
-                    </TableRow>
+                    </DataTableRow>
+                    {hasExpansionComponent && (
+                      <tr>
+                        <td
+                          colSpan={displayColumns.length}
+                          className="relative !rounded-none bg-white p-0">
+                          <div
+                            onMouseOver={() => setHoveredRow(row.id)}
+                            onMouseLeave={() => setHoveredRow(undefined)}
+                            className={cn(
+                              "sticky left-0 top-0 h-fit gap-2 border-b border-b-divider-main bg-white hover:bg-table-cell-hover",
+                              {
+                                "bg-table-cell-hover": hoveredRow === row.id,
+                              }
+                            )}
+                            style={{ width: tableWidth - 2 }}>
+                            <ExpansionComponent row={row} />
+                          </div>
+                        </td>
+                      </tr>
+                    )}
                   </DataTableRowContext.Provider>
+                )
+
+                return CustomRowContextProvider ? (
+                  <CustomRowContextProvider key={row.id} row={row}>
+                    {content}
+                  </CustomRowContextProvider>
+                ) : (
+                  <React.Fragment key={row.id}>{content}</React.Fragment>
                 )
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24">
-                  {!hasInitiallyLoaded && loading ? (
-                    <div className="flex h-full flex-col items-center justify-center">
-                      Loading ...
+                <TableCell
+                  colSpan={displayColumns.length}
+                  className={cn(
+                    "relative h-24 px-0",
+                    shouldDisableHover ? "hover:bg-white group-hover:bg-white" : ""
+                  )}>
+                  {isEmpty ? (
+                    <div style={{ maxWidth: tableWidth }} className="px-4">
+                      {emptyState || (
+                        <div className="flex w-full flex-row items-center justify-center">
+                          No data
+                        </div>
+                      )}
                     </div>
                   ) : null}
 
-                  {hasInitiallyLoaded && data?.length === 0
-                    ? emptyState
-                      ? emptyState
-                      : "No data"
-                    : null}
-
-                  {error && error.val?.message && (
-                    <span className="bg-danger-extra-light p-2 text-danger-main">
-                      {error.val.message}
-                    </span>
-                  )}
+                  {bodyError ? (
+                    <Alert variant="danger" className="m-2">
+                      {bodyError}
+                    </Alert>
+                  ) : null}
                 </TableCell>
               </TableRow>
             )}
-          </AnimatePresence>
-        </TableBody>
+          </TableBody>
+        </DataTableContext.Provider>
       </Table>
-      {showPagination && (
+      {shouldShowPagination && (
         <TablePagination
           table={table}
-          tableSize={table.getTotalSize()}
           pageIndex={pagination.pageIndex}
+          pageSize={pagination.pageSize}
           pageCount={table.getPageCount()}
+          totalItems={table.getFilteredRowModel().rows.length}
+          pageSizeOptions={DEFAULT_PAGE_SIZE_OPTIONS}
+          showItemCount
+          onPageSizeChange={handlePageSizeChange}
+          autoFitValue={autoFitPageSize && !isPageSizePicked ? pagination.pageSize : null}
         />
       )}
     </div>
   )
 }
+function DataTableHeader<TData>({
+  table,
+  isResizing,
+  shouldMenuAppearOnHover,
+  headerRef,
+}: {
+  table: ReactTable<TData>
+  isResizing: boolean
+  shouldMenuAppearOnHover: boolean
+  headerRef: React.RefObject<HTMLTableSectionElement>
+}) {
+  return (
+    <TableHeader ref={headerRef}>
+      {table.getHeaderGroups().map((headerGroup) => (
+        <TableRow key={headerGroup.id}>
+          {headerGroup.headers.map((header) => (
+            <DataTableHeaderCell
+              key={header.id}
+              header={header}
+              table={table}
+              isResizing={isResizing}
+              shouldMenuAppearOnHover={shouldMenuAppearOnHover}
+            />
+          ))}
+        </TableRow>
+      ))}
+    </TableHeader>
+  )
+}
 
-export { DataTable }
+function DataTableHeaderCell<TData, TValue>({
+  header,
+  table,
+  isResizing,
+  shouldMenuAppearOnHover,
+}: {
+  header: Header<TData, TValue>
+  table: ReactTable<TData>
+  isResizing: boolean
+  shouldMenuAppearOnHover: boolean
+}) {
+  const size = header.column.getSize()
+  const acceptsResizing = header.column.getCanResize()
+
+  const columnDef = header.column.columnDef as ExtendedColumnDef<TData>
+
+  const { sortOnClick } = columnDef
+
+  return (
+    <TableHead
+      className={`select-none ${isResizing ? "cursor-col-resize" : ""}`}
+      scope="col"
+      aria-sort={
+        header.column.getIsSorted() === "asc"
+          ? "ascending"
+          : header.column.getIsSorted() === "desc"
+            ? "descending"
+            : undefined
+      }
+      style={{
+        maxWidth: size,
+        whiteSpace: "nowrap",
+        width: header.getSize(),
+        ...getCommonPinningStyles(header.column, shouldMenuAppearOnHover, true),
+      }}>
+      {header.isPlaceholder ? null : sortOnClick ? (
+        <button
+          type="button"
+          onClick={() => header.column.toggleSorting(header.column.getIsSorted() === "asc")}>
+          {flexRender(header.column.columnDef.header, header.getContext())}
+        </button>
+      ) : (
+        flexRender(header.column.columnDef.header, header.getContext())
+      )}
+      {acceptsResizing && (
+        <div
+          className={`absolute right-0 top-0 h-[38px] w-[0.1875rem] cursor-col-resize touch-none select-none transition-opacity duration-300 ${
+            header.column.getIsResizing()
+              ? "isResizing bg-neutral-dark"
+              : "bg-transparent hover:bg-neutral-dark"
+          } ${table.options.columnResizeDirection}
+                      before:absolute before:bottom-0 before:left-[-10px] before:top-0 before:w-[10px] before:cursor-col-resize before:content-['']`}
+          {...{
+            onDoubleClick: () => header.column.resetSize(),
+            onMouseDown: header.getResizeHandler(),
+            onTouchStart: header.getResizeHandler(),
+          }}
+          style={{
+            transform:
+              table.options.columnResizeMode === "onEnd" && header.column.getIsResizing()
+                ? `translateX(${
+                    (table.options.columnResizeDirection === "rtl" ? -1 : 1) *
+                    (table.getState().columnSizingInfo.deltaOffset ?? 0)
+                  }px)`
+                : "",
+          }}></div>
+      )}
+    </TableHead>
+  )
+}
+
+type FrostedCellProps = {
+  children: React.ReactNode
+  className?: string
+  frostCell?: boolean
+}
+
+function FrostedCell({ children, className, frostCell }: FrostedCellProps) {
+  return (
+    <div className={cn("relative h-full w-full", className)}>
+      <div
+        className={cn(
+          "absolute left-0 top-[1px] flex h-[calc(100%-1px)] w-full flex-row transition-all"
+        )}>
+        <div
+          className={cn(
+            "h-full w-4 flex-shrink-0 from-table-cell-hover/[0%] from-0% to-table-cell-hover/[80%] group-hover:bg-gradient-to-r",
+            {
+              "bg-table-cell group-hover:bg-table-cell-hover": frostCell,
+            }
+          )}></div>
+        <div
+          className={cn(
+            "h-full flex-grow from-table-cell-hover/[80%] from-0% via-table-cell-hover via-[30%] to-table-cell-hover group-hover:bg-gradient-to-r",
+            {
+              "bg-table-cell group-hover:bg-table-cell-hover": frostCell,
+            }
+          )}></div>
+      </div>
+
+      <div className="relative z-10 flex h-full w-full flex-col items-center justify-center gap-2 px-4 py-2.5">
+        {children}
+      </div>
+    </div>
+  )
+}

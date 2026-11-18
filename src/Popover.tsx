@@ -1,9 +1,10 @@
 import * as PopoverPrimitive from "@radix-ui/react-popover"
 import * as React from "react"
 
-import { cx } from "../clsx/index"
+import { cn } from "../cn-utils"
 import { Button } from "./Button"
 
+const PopoverAnchor = PopoverPrimitive.Anchor
 const PopoverArrow = PopoverPrimitive.Arrow
 const PopoverTrigger = PopoverPrimitive.Trigger
 const PopoverPortal = PopoverPrimitive.Portal
@@ -24,10 +25,15 @@ const Popover = ({
   onOk,
   onCancel,
   content,
+  onOpenChange,
   ...rest
 }: TPopover) => {
   return (
-    <PopoverPrimitive.Root open={open} defaultOpen={defaultOpen} {...rest}>
+    <PopoverPrimitive.Root
+      open={open}
+      onOpenChange={onOpenChange}
+      defaultOpen={defaultOpen}
+      {...rest}>
       <PopoverPrimitive.Trigger asChild>{children}</PopoverPrimitive.Trigger>
       <PopoverContent side={side} align={align} onOk={onOk} onCancel={onCancel} {...rest}>
         {content}
@@ -67,8 +73,8 @@ const PopoverContent = React.forwardRef<
         ref={ref}
         align={align}
         sideOffset={sideOffset}
-        className={cx(
-          "z-50 flex animate-in flex-col break-words rounded-sm bg-white text-sm text-primary shadow-small data-[state=closed]:animate-out",
+        className={cn(
+          "z-50 flex animate-in flex-col break-words rounded-md bg-white text-sm text-primary shadow-small data-[state=closed]:animate-out",
           className
         )}
         {...props}>
@@ -93,4 +99,4 @@ const PopoverContent = React.forwardRef<
 )
 PopoverContent.displayName = PopoverPrimitive.Content.displayName
 
-export { Popover, PopoverContent, PopoverRoot, PopoverTrigger, PopoverPortal }
+export { PopoverAnchor, Popover, PopoverContent, PopoverRoot, PopoverTrigger, PopoverPortal }
