@@ -1,84 +1,68 @@
+import TableOutlined from "@ant-design/icons/TableOutlined"
 import { Table } from "@tanstack/react-table"
 import React from "react"
 
-import { SettingOutlined } from "@loft-enterprise/icons"
+import { cn } from "../../cn-utils"
+import { Button } from "../Button"
+import { Checkbox } from "../Checkbox"
 import {
-  Button,
-  Checkbox,
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
-  Label,
-} from "@loft-enterprise/primitives"
+} from "../DropdownMenu"
+import { TABLE_BATCH_ACTIONS_COLUMN_ID, TABLE_EXPANSION_COLUMN_ID } from "./constants"
+
+const UNLISTED_COLUMN_IDS = [TABLE_BATCH_ACTIONS_COLUMN_ID, TABLE_EXPANSION_COLUMN_ID, "actions"]
 
 type Props<TData> = {
+  disabled?: boolean
   table: Table<TData>
+  displayNames?: Record<string, string>
 }
 
-function ColumnCustomization<TData>({ table }: Props<TData>) {
+function ColumnCustomization<TData>({ table, displayNames, disabled }: Props<TData>) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost">
-          <SettingOutlined /> Columns
+        <Button variant="ghost" disabled={disabled}>
+          <TableOutlined aria-hidden="true" /> Columns
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="max-w-36" side="bottom" align="end" sticky="always">
-        <div>
-          {table.getAllLeafColumns().map((column) => {
-            if (column.id === "select" || column.id === "actions") return null
+      <DropdownMenuContent className="w-max" side="bottom" align="end" sticky="always">
+        {table
+          .getAllLeafColumns()
+          .filter((column) => !UNLISTED_COLUMN_IDS.includes(column.id))
+          .map((column) => {
+            const canHide = column.id !== "name" && column.getCanHide()
 
             return (
-              <DropdownMenuItem
-                onKeyDown={(e) => {
-                  if (column.id === "name") return
-                  if (e.key === "Enter" || e.key === " ") {
-                    const mockEvent = {
-                      target: {
-                        checked: !column.getIsVisible(),
-                      },
-                    }
-                    column.getToggleVisibilityHandler()(mockEvent)
-                  }
-                }}
-                onClick={(e) => {
-                  if (column.id === "name") return
-                  e.preventDefault()
-                  const mockEvent = {
-                    target: {
-                      checked: !column.getIsVisible(),
-                    },
-                  }
-                  column.getToggleVisibilityHandler()(mockEvent)
-                }}
+              <DropdownMenuCheckboxItem
                 key={column.id}
-                onSelect={(e) => e.preventDefault()}>
-                <div key={column.id}>
-                  <div className="flex w-full items-center gap-2">
-                    <Checkbox
-                      className="*:ml-[3px]"
-                      id={column.id}
-                      disabled={column.id === "name"}
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(e) => {
-                        const mockEvent = {
-                          target: {
-                            checked: e,
-                          },
-                        }
-                        column.getToggleVisibilityHandler()(mockEvent)
-                      }}
-                    />
-                    <Label htmlFor={column.id} className="w-full text-sm">
-                      <span className="capitalize">{column.id}</span>
-                    </Label>
-                  </div>
-                </div>
-              </DropdownMenuItem>
+                className="flex cursor-pointer select-none items-center gap-2 px-3 py-2 text-sm text-primary outline-none transition-colors focus-within:bg-neutral-light hover:bg-neutral-extra-light [&>span:first-child]:hidden"
+                disabled={!canHide}
+                checked={column.getIsVisible()}
+                onCheckedChange={(checked) => column.toggleVisibility(checked)}
+                onSelect={(event) => event.preventDefault()}>
+                <Checkbox
+                  aria-hidden="true"
+                  tabIndex={-1}
+                  checked={column.getIsVisible()}
+                  disabled={!canHide}
+                  className="pointer-events-none"
+                />
+                <span
+                  className={cn("w-full whitespace-nowrap font-normal", {
+                    capitalize: !displayNames?.[column.id],
+                  })}>
+                  {displayNames?.[column.id] ??
+                    (typeof column.columnDef.header === "string"
+                      ? column.columnDef.header
+                      : column.id)}
+                </span>
+              </DropdownMenuCheckboxItem>
             )
           })}
-        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   )

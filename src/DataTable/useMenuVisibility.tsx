@@ -1,5 +1,5 @@
 import { Table } from "@tanstack/react-table"
-import React, { useEffect, useState } from "react"
+import React, { useLayoutEffect, useState } from "react"
 
 type Props<TData> = {
   tableRef: React.RefObject<HTMLTableElement>
@@ -9,19 +9,10 @@ type Props<TData> = {
 const TOLERANCE = 10
 function useMenuVisibility<TData>({ tableRef, table }: Props<TData>) {
   const tableSize = table.getTotalSize()
-  const [shouldTableBeFullWidth, setShouldTableBeFullWidth] = useState(() => {
-    if (!tableRef.current) return false
+  const [shouldTableBeFullWidth, setShouldTableBeFullWidth] = useState(false)
+  const [shouldMenuBeFixed, setShouldMenuBeFixed] = useState(false)
 
-    return table.getTotalSize() <= tableRef.current.clientWidth
-  })
-  const [shouldMenuBeFixed, setShouldMenuBeFixed] = useState(() => {
-    if (!tableRef.current) return false
-    const { scrollLeft, scrollWidth, clientWidth } = tableRef.current
-
-    return scrollLeft + clientWidth >= scrollWidth + TOLERANCE
-  })
-
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!tableRef.current) return
     const { scrollLeft, scrollWidth, clientWidth } = tableRef.current
     const tableRefMemo = tableRef.current
@@ -54,7 +45,7 @@ function useMenuVisibility<TData>({ tableRef, table }: Props<TData>) {
     }
   }, [tableSize, tableRef, table])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!tableRef.current) return
     const { scrollLeft, scrollWidth, clientWidth } = tableRef.current
     setShouldMenuBeFixed(() => {
